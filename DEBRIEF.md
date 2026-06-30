@@ -121,6 +121,43 @@ Verified: `neuralink + scoreboard` parity vs pulse2percept `< 1e-2`;
   retained for the magnification / inverse map that Dynaphos needs (documented
   approximation).
 
+## Learned world model architecture (transformer, no convolutions)
+
+`learned/model.py` is a ViT-style transformer (no `nn.Conv*` anywhere):
+
+- Tokenization: linear patch embedding (`nn.Linear` on flattened patches via pure
+  tensor reshape/permute, not a strided conv). Default `patch_size=4`; the state
+  image is zero-padded up to a multiple of the patch size and the output is
+  cropped back, so arbitrary percept grid sizes work.
+- Positional embedding: parameter-free 2D sinusoidal, computed on the fly. Chosen
+  over a learned table because the percept grid size varies across configs; a
+  fixed learned table would not transfer. Requires `dim % 4 == 0`.
+- Encoder: `nn.TransformerEncoder` of pre-norm multi-head self-attention blocks
+  (`enable_nested_tensor=False` to avoid the norm_first warning). Defaults are
+  small and configurable for M1: `dim=64, depth=4, heads=4, mlp_ratio=2.0`.
+- Decoder: linear patch-unembedding head (`nn.Linear` dim -> patch_dim) followed
+  by a pure reshape back to `(B, 1, H, W)` — no transposed convolution / pixel
+  shuffle layer; the "unshuffle" is an explicit tensor reshape.
+- Conditioning uses BOTH mechanisms requested: (a) conditioning tokens
+  (action token always; model-id and implant-id tokens added in `shared` mode)
+  prepended to the patch sequence with learned type embeddings, and (b) FiLM
+  modulation of the patch tokens from the combined conditioning vector.
+- Specialist mode (`mode="specialist"`) drops the categorical (model/implant)
+  tokens and conditioning, keeping only the action token, so the shared-vs-
+  specialist ablation harness works unchanged.
+
+Public interface preserved: `UnifiedWorldModel(action_dim, n_models, n_implants,
+..., mode=...)`, `.mode`, `.conditioning(...)`, and
+`forward(s_t, action, model_id, implant_id, topo_params) -> (B, 1, H, W)`. The
+`WorldModel` integration, dataset, train loop, and ablation harness are
+untouched. Verified: single-batch train step + single-batch inference smoke
+tests pass on CPU and MPS; full `pytest -m "not slow"` is green (27 passed).
+
+Tradeoffs: a global-attention transformer over patch tokens is heavier per step
+than the previous small conv U-Net at equal width and has weaker spatial
+inductive bias, but it satisfies the no-conv requirement and remains tiny/fast
+enough for the local smoke tests; real training/ablation is cluster-side.
+
 ## Deferrals / stubs
 
 - Learned world model is only smoke-proven locally (single-batch train step +

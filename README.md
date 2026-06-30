@@ -95,10 +95,14 @@ specialists.
 
 ## Learned unified world model + ablation
 
-`UnifiedWorldModel` is a conv encoder/decoder FiLM-conditioned on percept-model
-id, implant id, and topography params. A `mode` switch collapses conditioning to
+`UnifiedWorldModel` is a ViT-style **transformer** (no convolutions): a linear
+patch embedding + 2D sinusoidal positional embeddings, a multi-head
+self-attention encoder, and a linear patch-unembedding head. It is conditioned on
+percept-model id, implant id, and topography params via prepended conditioning
+tokens **and** FiLM. A `mode` switch collapses the categorical conditioning to
 train per-model **specialists** (the ablation baseline) from the identical
-architecture.
+architecture. Defaults are small and configurable (`dim`, `depth`, `heads`,
+`patch_size`) so the smoke tests run on the M1.
 
 ```bash
 make train  WORLD_DATASET=data/world.h5
