@@ -16,7 +16,17 @@ class WorldTransitionDataset(Dataset):
     """Yields ``(s_t, s_tp1, action, model_id, implant_id, topo_params)`` transitions."""
 
     MODEL_IDS = {"axonmap": 0, "scoreboard": 1, "dynaphos": 2}
-    IMPLANT_IDS = {"argusii": 0, "alphaims": 1, "orion": 2, "cortivis": 3, "icvp": 4}
+    IMPLANT_IDS = {
+        "argusii": 0,
+        "alphaims": 1,
+        "alphaams": 2,
+        "prima": 3,
+        "grid": 4,
+        "orion": 5,
+        "cortivis": 6,
+        "icvp": 7,
+        "neuralink": 8,
+    }
 
     def __init__(self, path: str):
         self.path = path

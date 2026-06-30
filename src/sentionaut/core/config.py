@@ -12,8 +12,8 @@ import yaml
 # retinal models pair with retinal implants, cortical with cortical.
 RETINAL_MODELS = {"axonmap"}
 CORTICAL_MODELS = {"scoreboard", "dynaphos"}
-RETINAL_IMPLANTS = {"argusii", "alphaims"}
-CORTICAL_IMPLANTS = {"orion", "cortivis", "icvp"}
+RETINAL_IMPLANTS = {"argusii", "alphaims", "alphaams", "prima", "grid"}
+CORTICAL_IMPLANTS = {"orion", "cortivis", "icvp", "neuralink"}
 
 
 @dataclass
@@ -33,6 +33,17 @@ class Config:
     eye: str = "RE"
     device: str | None = None
     seed: int | None = None
+    # Configurable dense retinal ElectrodeGrid (used only when implant == "grid").
+    implant_grid_shape: tuple[int, int] = (15, 15)
+    implant_grid_spacing: float = 400.0
+    # Neuralink ensemble layout (used only when implant == "neuralink"): threads
+    # are placed over a dva sub-grid via the cortical map.
+    neuralink_xrange: tuple[float, float] = (-3.0, 3.0)
+    neuralink_yrange: tuple[float, float] = (-3.0, 3.0)
+    neuralink_xystep: float = 2.0
+    # Prefer a NeuropythyMap-backed cortical topography when available (optional;
+    # falls back to Polimeni2006Map). See topography/neuropythy.py.
+    use_neuropythy: bool = False
 
     def __post_init__(self) -> None:
         self.model = self.model.lower()

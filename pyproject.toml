@@ -24,6 +24,12 @@ dev = [
     "pytest>=8.0",
     "ruff>=0.5",
 ]
+# Optional MRI-derived cortical map. Heavy and requires downloadable subject
+# data, so it is NOT installed by default; the NeuropythyMap topography falls
+# back to Polimeni2006Map when this extra is absent. See DEBRIEF.md.
+neuropythy = [
+    "neuropythy>=0.12",
+]
 
 [project.scripts]
 sentionaut-generate = "sentionaut.generate:cli"

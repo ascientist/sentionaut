@@ -9,14 +9,18 @@ from .config import Config
 from .device import get_device
 
 
-def build_implant(name: str, device: torch.device) -> Implant:
+def build_implant(config: Config, device: torch.device) -> Implant:
     from ..implants.registry import build_implant as _build
 
-    return _build(name, device)
+    return _build(config, device)
 
 
 def build_topography(config: Config, device: torch.device) -> Topography:
     if config.is_cortical:
+        if config.use_neuropythy:
+            from ..topography.neuropythy import NeuropythyTopography
+
+            return NeuropythyTopography.build(config, device)
         from ..topography.cortical import CorticalTopography
 
         return CorticalTopography.build(config, device)
@@ -46,7 +50,7 @@ def build_components(
 ) -> tuple[Implant, Topography, PerceptModel]:
     """Build and bind the three swappable axes for a config."""
     device = device or get_device(config.device)
-    implant = build_implant(config.implant, device)
+    implant = build_implant(config, device)
     topography = build_topography(config, device)
     model = build_model(config).to(device)
     model.build(implant, topography)

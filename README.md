@@ -13,10 +13,12 @@ CUDA on cluster) and are parity-tested against pulse2percept.
 
 Three axes are independently swappable via a `Config`:
 
-- **Implant** (electrode geometry + pose): retinal `argusii`/`alphaims`,
-  cortical `orion`/`cortivis`/`icvp`.
+- **Implant** (electrode geometry + pose): retinal `argusii`, `alphaims`,
+  `alphaams`, `prima`, and a configurable dense `grid`; cortical `orion`,
+  `cortivis`, `icvp`, `neuralink`.
 - **Topography** (visual-field map): retinal Jansonius axon map, cortical
-  `Polimeni2006Map` (dva <-> cortex, split hemispheres, cortical magnification).
+  `Polimeni2006Map` (dva <-> cortex, split hemispheres, cortical magnification),
+  plus an optional `neuropythy` MRI-derived map (lazy, falls back to Polimeni).
 - **PerceptModel**: retinal `axonmap` (`BiphasicAxonMapTorch`), cortical
   `scoreboard` (`ScoreboardTorch`), cortical `dynaphos` (`DynaphosTorch`).
 

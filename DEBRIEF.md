@@ -81,17 +81,48 @@ performs one integration step before emitting its first frame, so torch frame
 `i` corresponds to p2p frame `i+1`. The parity test compares against
 `ref[..., 1:]` accordingly.
 
+## Implant registry (updated)
+
+The registry now covers the full set the plan calls for:
+
+- Retinal: `argusii` (primary epiretinal), `alphaims`, `alphaams` (epiretinal),
+  `prima` (subretinal photovoltaic), and a configurable dense `grid`
+  (`pulse2percept.implants.ElectrodeGrid`, default 15x15 @ 400 µm, set via
+  `Config.implant_grid_shape` / `implant_grid_spacing`).
+- Cortical: `orion`, `cortivis`, `icvp`, and `neuralink`.
+
+`neuralink` is built as a `pulse2percept.implants.cortex.Neuralink`
+(`EnsembleImplant` of `LinearEdgeThread`s) via `Neuralink.from_cortical_map`
+using a `Polimeni2006Map` over a small dva sub-grid (`Config.neuralink_xrange/
+yrange/xystep`, default +/-3 dva, step 2 -> 16 threads x 32 = 512 electrodes).
+Its electrode coordinates are already in cortex microns, so they feed the same
+`Implant` interface and the cortical Scoreboard/Dynaphos models unchanged.
+Verified: `neuralink + scoreboard` parity vs pulse2percept `< 1e-2`;
+`neuralink + dynaphos` runs on CPU and MPS (`tests/test_neuralink.py`).
+
+## NeuropythyMap decision (optional / lazy)
+
+- `topography/neuropythy.py` wraps `pulse2percept.topography.NeuropythyMap`
+  behind the `Topography` interface, enabled per-config via
+  `Config.use_neuropythy=True`.
+- The `neuropythy` package itself *does* resolve cleanly via `uv` (added as an
+  optional extra `neuropythy` in pyproject; it pulls nibabel/pimms/s3fs/etc.).
+  It is deliberately **NOT installed by default** because building an actual
+  NeuropythyMap additionally requires downloadable subject MRI / FreeSurfer
+  template surfaces, which is heavy and network/data-dependent and cannot run in
+  CI or offline.
+- Decision: keep it fully lazy. `NeuropythyTopography.build` attempts to build a
+  NeuropythyMap and, on any failure (package missing or data missing),
+  transparently falls back to the analytical Polimeni2006Map-backed
+  `CorticalTopography` (emitting a warning, setting `topo.source`). The default
+  install and the percept pipeline therefore never break. To enable the real
+  map: `uv sync --extra neuropythy` and provide subject data, then set
+  `use_neuropythy=True`. In the neuropythy path the PolimeniTorch helper is
+  retained for the magnification / inverse map that Dynaphos needs (documented
+  approximation).
+
 ## Deferrals / stubs
 
-- NeuropythyMap topography: NOT used. It requires the optional `neuropythy`
-  package plus subject-specific MRI-derived templates, which is out of scope for
-  an analytical, self-contained GPU port. Only the analytical Polimeni2006Map is
-  ported. To revisit: add a topography adapter that wraps a prebuilt
-  `pulse2percept.topography.NeuropythyMap` if neuropythy + data are installed.
-- Neuralink cortical implant: NOT included in the implant registry. The plan
-  explicitly lists Orion/Cortivis/ICVP (cortical) + ArgusII/AlphaIMS (retinal);
-  Neuralink is left out to match the plan scope. It can be added trivially via
-  `pulse2percept.implants.cortex.Neuralink` in the registry if needed.
 - Learned world model is only smoke-proven locally (single-batch train step +
   single-batch inference), per the plan. Real training/ablation is cluster-side.
 

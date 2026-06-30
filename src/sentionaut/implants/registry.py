@@ -1,4 +1,10 @@
-"""Retinal + cortical electrode geometries loaded from pulse2percept as tensors."""
+"""Retinal + cortical electrode geometries loaded from pulse2percept as tensors.
+
+Retinal: ``argusii`` (primary epiretinal), ``alphaims``/``alphaams`` (epiretinal),
+``prima`` (subretinal photovoltaic), and a configurable dense ``grid``
+(``ElectrodeGrid``). Cortical: ``orion``/``cortivis``/``icvp`` plus ``neuralink``
+(an ``EnsembleImplant`` of ``LinearEdgeThread``s placed via the cortical map).
+"""
 
 from __future__ import annotations
 
@@ -6,22 +12,55 @@ import numpy as np
 import torch
 
 from ..core.base import Implant, Pose
+from ..core.config import Config
 
-_RETINAL = {"argusii": "ArgusII", "alphaims": "AlphaIMS"}
-_CORTICAL = {"orion": "Orion", "cortivis": "Cortivis", "icvp": "ICVP"}
+_RETINAL_SIMPLE = {
+    "argusii": "ArgusII",
+    "alphaims": "AlphaIMS",
+    "alphaams": "AlphaAMS",
+    "prima": "PRIMA",
+}
+_CORTICAL_SIMPLE = {"orion": "Orion", "cortivis": "Cortivis", "icvp": "ICVP"}
 
 
-def _load_p2p_implant(name: str):
-    key = name.lower()
-    if key in _RETINAL:
+def _coords_from_p2p(p2p_obj) -> tuple[list[str], np.ndarray]:
+    names = list(p2p_obj.electrodes.keys())
+    coords = np.array(
+        [[p2p_obj.electrodes[e].x, p2p_obj.electrodes[e].y] for e in names], dtype=np.float32
+    )
+    return names, coords
+
+
+def _build_p2p_implant(config: Config):
+    name = config.implant.lower()
+    if name in _RETINAL_SIMPLE:
         import pulse2percept.implants as imp
 
-        return getattr(imp, _RETINAL[key])()
-    if key in _CORTICAL:
+        return getattr(imp, _RETINAL_SIMPLE[name])()
+    if name in _CORTICAL_SIMPLE:
         import pulse2percept.implants.cortex as cimp
 
-        return getattr(cimp, _CORTICAL[key])()
-    known = sorted(set(_RETINAL) | set(_CORTICAL))
+        return getattr(cimp, _CORTICAL_SIMPLE[name])()
+    if name == "grid":
+        from pulse2percept.implants import ElectrodeGrid
+
+        return ElectrodeGrid(
+            tuple(config.implant_grid_shape), config.implant_grid_spacing, type="rect"
+        )
+    if name == "neuralink":
+        from pulse2percept.implants.cortex import LinearEdgeThread, Neuralink
+        from pulse2percept.topography import Polimeni2006Map
+
+        vfmap = Polimeni2006Map(regions=["v1"])
+        return Neuralink.from_cortical_map(
+            LinearEdgeThread,
+            vfmap,
+            xrange=tuple(config.neuralink_xrange),
+            yrange=tuple(config.neuralink_yrange),
+            xystep=config.neuralink_xystep,
+            region="v1",
+        )
+    known = sorted(set(_RETINAL_SIMPLE) | set(_CORTICAL_SIMPLE) | {"grid", "neuralink"})
     raise ValueError(f"Unknown implant '{name}'. Known: {known}.")
 
 
@@ -57,8 +96,7 @@ class TensorImplant(Implant):
         return TensorImplant(self.name, self.names, self._coords.to(device))
 
 
-def build_implant(name: str, device: torch.device) -> TensorImplant:
-    p2p = _load_p2p_implant(name)
-    names = list(p2p.electrodes.keys())
-    coords = np.array([[p2p.electrodes[e].x, p2p.electrodes[e].y] for e in names], dtype=np.float32)
-    return TensorImplant(name.lower(), names, torch.from_numpy(coords).to(device))
+def build_implant(config: Config, device: torch.device) -> TensorImplant:
+    p2p = _build_p2p_implant(config)
+    names, coords = _coords_from_p2p(p2p)
+    return TensorImplant(config.implant.lower(), names, torch.from_numpy(coords).to(device))
