@@ -1,0 +1,33 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint-and-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Sync dependencies
+        run: uv sync --extra dev
+
+      - name: Ruff lint
+        run: uv run ruff check src tests
+
+      - name: Ruff format check
+        run: uv run ruff format --check src tests
+
+      - name: Import smoke check
+        run: |
+          uv run python -c "import sentionaut; from sentionaut.core.registry import build_components; from sentionaut.models import BiphasicAxonMapTorch, ScoreboardTorch, DynaphosTorch; print('import ok')"
+
+      - name: Fast tests
+        run: uv run pytest -m "not slow" -q

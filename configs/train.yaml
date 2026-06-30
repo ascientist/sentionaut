@@ -1,0 +1,6 @@
+# Cluster-scale training knobs. Override the small local defaults.
+episodes: 512
+sequence_length: 8
+batch_size: 64
+epochs: 50
+lr: 0.0003

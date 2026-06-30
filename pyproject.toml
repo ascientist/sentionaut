@@ -1,0 +1,53 @@
+[project]
+name = "sentionaut"
+version = "0.1.0"
+description = "Modular GPU-native world model of prosthetic vision (retinal + cortical)"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pulse2percept==0.9.0",
+    "numpy>=1.21,<2.0",
+    "torch>=2.2",
+    "h5py>=3.10",
+    "click>=8.1",
+    "tqdm>=4.66",
+    "setuptools>=68",
+    "matplotlib>=3.8",
+    "streamlit>=1.30",
+    "imageio[ffmpeg]>=2.34",
+    "scikit-image>=0.22",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.5",
+]
+
+[project.scripts]
+sentionaut-generate = "sentionaut.generate:cli"
+sentionaut-world = "sentionaut.generate:world_cli"
+sentionaut-show = "sentionaut.visualize:cli"
+sentionaut-animate = "sentionaut.animate:cli"
+sentionaut-train = "sentionaut.learned.train:cli"
+
+[tool.uv.extra-build-dependencies]
+pulse2percept = ["numpy", "cython"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: heavy full-scale runs, excluded from local/CI by default",
+]
+
+[build-system]
+requires = ["uv_build>=0.9.7,<0.10.0"]
+build-backend = "uv_build"

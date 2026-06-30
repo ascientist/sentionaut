@@ -1,0 +1,22 @@
+# Dynaphos model constants, mirrored from pulse2percept 0.9.0
+# (pulse2percept/models/cortex/dynaphos.py, DynaphosModel.get_default_params).
+# See DEBRIEF.md.
+dynaphos:
+  dt: 20.0                 # ms, simulation time step
+  tau_act: 111.111111      # ms, activation decay constant
+  rheobase: 23.9           # uA, rheobase current
+  tau_trace: 1.96765520573e6  # ms, trace decay constant
+  kappa_trace: 13.95528162    # input effect modifier for memory trace
+  excitability: 675.0      # uA/mm^2
+  sig_slope: 19152642.500946816
+  a50: 1.057631326853325e-07
+  a_thr: 9.141886000943878e-08
+  freq: 300.0              # Hz default stimulus frequency
+  p_dur: 0.170             # ms default pulse duration
+
+# Polimeni2006Map parameters used by Dynaphos (paper values).
+dynaphos_map:
+  k: 17.3
+  a: 0.75
+  b: 120.0
+  alpha1: 0.95

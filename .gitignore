@@ -1,0 +1,26 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Caches / generated data (regenerated on demand)
+data/
+*.h5
+axons.pickle
+debug.log
+logs/
+
+# Tooling caches
+.ruff_cache/
+.pytest_cache/
+
+# OS
+.DS_Store
+
+# Keep rendered animations (artifacts/) tracked as the local deliverable.
