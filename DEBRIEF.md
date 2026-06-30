@@ -97,4 +97,27 @@ performs one integration step before emitting its first frame, so torch frame
 
 ## GitHub delivery
 
-- Outcome recorded at the end of the run.
+- SUCCESS. `gh` was authenticated as `ascientist` (ssh git protocol). Created a
+  new PRIVATE repo and pushed `main`:
+  - URL: https://github.com/ascientist/sentionaut
+  - Visibility: PRIVATE, default branch `main`, single commit pushed.
+- No interactive prompts were hit. Caches/datasets (`data/`, `*.h5`,
+  `axons.pickle`, `.venv`) are gitignored; the three rendered animations under
+  `artifacts/` are tracked as the local deliverable.
+
+## Final local validation
+
+- `uv run pytest -m "not slow"`: 15 passed, 1 deselected (the slow CPU/MPS
+  benchmark).
+- `ruff check` + `ruff format --check`: clean.
+- Three animations rendered on MPS to `artifacts/{axonmap,scoreboard,dynaphos}`
+  (gif + mp4).
+- End-to-end scale dry-run (generate multi-config dataset -> train 1 epoch ->
+  ablate shared vs specialist) executed on CPU without error.
+
+## Notes for resuming the cluster work
+
+- Large dataset generation / training / ablation run via `scripts/*.sh` (adapt
+  the `--account`, module, and venv placeholder lines for your DRAC allocation).
+- The DEBRIEF in the repo (`retinawm/DEBRIEF.md`) is a committed copy of this
+  file; this outer copy at the workspace root is the canonical working log.
