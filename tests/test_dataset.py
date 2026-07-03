@@ -22,19 +22,25 @@ def test_multi_config_roundtrip(tmp_path):
     configs = build_configs(["scoreboard", "dynaphos"], base)
     out = tmp_path / "world.h5"
     generate_world_dataset(
-        out, configs, episodes=2, sequence_length=2, device=torch.device("cpu"), seed=0
+        out,
+        configs,
+        episodes=2,
+        sequence_length=2,
+        device=torch.device("cpu"),
+        seed=0,
+        silent_tail=0,
     )
 
     with h5py.File(out, "r") as h5:
         n = h5["world"]["s_t"].shape[0]
-        assert n == 2 * 2 * 2  # 2 configs * 2 episodes * 2 steps
-        assert set(h5["world"].keys()) >= {"s_t", "s_tp1", "amp", "config_id"}
+        assert n == 2 * 2 * 2
+        assert set(h5["world"].keys()) >= {"s_t", "s_tp1", "amp", "config_id", "aux_t"}
 
     ds = WorldTransitionDataset(str(out))
     assert len(ds) == 8
     sample = ds[0]
     H, W = ds.grid_shape
-    assert sample["s_t"].shape == (1, H, W)
+    assert sample["s_t"].shape == (3, H, W)
     assert sample["s_tp1"].shape == (1, H, W)
     assert sample["action"].shape[0] == ds.action_dim
     assert sample["model_id"].dtype == torch.long

@@ -1,17 +1,4 @@
-"""``UnifiedWorldModel``: a transformer (ViT-style) learned world model.
-
-The input state image is tokenized into patches via a linear patch embedding plus
-2D sinusoidal positional embeddings, processed by a Transformer encoder
-(multi-head self-attention blocks), and decoded back to the next-percept image by
-a linear patch-unembedding head (pure tensor reshape, no transposed conv). There
-are no convolutions anywhere.
-
-Conditioning on (percept-model id, implant id, topography params) + continuous
-action is injected two ways: as conditioning tokens prepended to the patch
-sequence, and as FiLM modulation of the patch tokens. A ``mode`` switch collapses
-the categorical conditioning so the same architecture trains per-model
-specialists (the ablation baseline).
-"""
+"""``UnifiedWorldModel``: a transformer (ViT-style) learned world model."""
 
 from __future__ import annotations
 
@@ -20,27 +7,20 @@ import torch.nn as nn
 
 
 def sincos_2d_pos_embed(n_h: int, n_w: int, dim: int, device, dtype) -> torch.Tensor:
-    """Parameter-free 2D sinusoidal positional embedding, shape ``(n_h*n_w, dim)``.
-
-    Being computed on the fly keeps the model agnostic to the percept grid size
-    (which varies across configs), unlike a fixed learned table.
-    """
     assert dim % 4 == 0, "transformer dim must be divisible by 4 for 2D sincos"
     quarter = dim // 4
     omega = torch.arange(quarter, device=device, dtype=dtype) / quarter
-    omega = 1.0 / (10000.0**omega)  # (quarter,)
+    omega = 1.0 / (10000.0**omega)
     gy = torch.arange(n_h, device=device, dtype=dtype)
     gx = torch.arange(n_w, device=device, dtype=dtype)
     yy, xx = torch.meshgrid(gy, gx, indexing="ij")
-    yy = yy.reshape(-1)[:, None] * omega[None, :]  # (N, quarter)
+    yy = yy.reshape(-1)[:, None] * omega[None, :]
     xx = xx.reshape(-1)[:, None] * omega[None, :]
     pe = torch.cat([torch.sin(yy), torch.cos(yy), torch.sin(xx), torch.cos(xx)], dim=1)
-    return pe  # (N, dim)
+    return pe
 
 
 class FiLM(nn.Module):
-    """Feature-wise linear modulation of token features from a conditioning vector."""
-
     def __init__(self, cond_dim: int, dim: int):
         super().__init__()
         self.fc = nn.Linear(cond_dim, dim * 2)
@@ -62,27 +42,30 @@ class UnifiedWorldModel(nn.Module):
         patch_size: int = 4,
         mlp_ratio: float = 2.0,
         mode: str = "shared",
+        in_channels: int = 3,
     ):
         super().__init__()
-        assert mode in ("shared", "specialist")
+        assert mode in ("shared", "specialist", "shared_trunk")
         assert dim % 4 == 0
         self.mode = mode
         self.dim = dim
         self.patch_size = patch_size
-        self.in_channels = 1
-        patch_dim = self.in_channels * patch_size * patch_size
+        self.in_channels = in_channels
+        patch_dim = in_channels * patch_size * patch_size
 
-        # Linear patch embedding / unembedding (no convolutions).
         self.patch_embed = nn.Linear(patch_dim, dim)
         self.patch_unembed = nn.Linear(dim, patch_dim)
+        self.unembed_heads = (
+            nn.ModuleList([nn.Linear(dim, patch_dim) for _ in range(n_models)])
+            if mode == "shared_trunk"
+            else None
+        )
 
-        # Conditioning: action MLP + categorical embeddings.
         self.action_mlp = nn.Sequential(
             nn.Linear(action_dim + 2, dim), nn.SiLU(), nn.Linear(dim, dim)
         )
         self.model_emb = nn.Embedding(n_models, dim)
         self.implant_emb = nn.Embedding(n_implants, dim)
-        # Learned type embeddings so cond tokens are distinguishable from patches.
         self.cond_type = nn.Parameter(torch.zeros(3, dim))
         nn.init.normal_(self.cond_type, std=0.02)
         self.film = FiLM(dim, dim)
@@ -100,7 +83,6 @@ class UnifiedWorldModel(nn.Module):
         )
         self.norm = nn.LayerNorm(dim)
 
-    # Kept for backward compatibility / introspection.
     def conditioning(self, action, model_id, implant_id, topo_params) -> torch.Tensor:
         a = self.action_mlp(torch.cat([action, topo_params], dim=-1))
         if self.mode == "specialist":
@@ -108,7 +90,6 @@ class UnifiedWorldModel(nn.Module):
         return a + self.model_emb(model_id) + self.implant_emb(implant_id)
 
     def _to_patches(self, x: torch.Tensor):
-        """(B, 1, H, W) -> patches (B, N, patch_dim) with padded grid dims."""
         b, c, h, w = x.shape
         p = self.patch_size
         pad_h = (p - h % p) % p
@@ -121,8 +102,7 @@ class UnifiedWorldModel(nn.Module):
         x = x.reshape(b, n_h * n_w, c * p * p)
         return x, (h, w, n_h, n_w)
 
-    def _from_patches(self, tokens: torch.Tensor, shape) -> torch.Tensor:
-        """Inverse of ``_to_patches``: (B, N, patch_dim) -> (B, 1, H, W)."""
+    def _from_patches(self, tokens: torch.Tensor, shape, model_id=None) -> torch.Tensor:
         h, w, n_h, n_w = shape
         b = tokens.shape[0]
         c, p = self.in_channels, self.patch_size
@@ -141,7 +121,7 @@ class UnifiedWorldModel(nn.Module):
         action_tok = self.action_mlp(torch.cat([action, topo_params], dim=-1))
         cond_vec = action_tok
         cond_tokens = [action_tok + self.cond_type[0]]
-        if self.mode == "shared":
+        if self.mode in ("shared", "shared_trunk"):
             model_tok = self.model_emb(model_id)
             implant_tok = self.implant_emb(implant_id)
             cond_vec = action_tok + model_tok + implant_tok
@@ -149,12 +129,20 @@ class UnifiedWorldModel(nn.Module):
             cond_tokens.append(implant_tok + self.cond_type[2])
 
         tokens = self.film(tokens, cond_vec)
-        cond_seq = torch.stack(cond_tokens, dim=1)  # (B, n_cond, dim)
+        cond_seq = torch.stack(cond_tokens, dim=1)
         seq = torch.cat([cond_seq, tokens], dim=1)
 
         seq = self.encoder(seq)
         seq = self.norm(seq)
 
         patch_tokens = seq[:, -n:, :]
-        out_patches = self.patch_unembed(patch_tokens)
-        return self._from_patches(out_patches, shape)
+        if self.mode == "shared_trunk" and self.unembed_heads is not None:
+            outs = []
+            for i in range(b):
+                mid = int(model_id[i].item())
+                outs.append(self.unembed_heads[mid](patch_tokens[i : i + 1]))
+            out_patches = torch.cat(outs, dim=0)
+        else:
+            out_patches = self.patch_unembed(patch_tokens)
+        out = self._from_patches(out_patches, shape)
+        return out[:, :1]

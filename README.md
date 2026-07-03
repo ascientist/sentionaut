@@ -42,7 +42,19 @@ percept = model.forward(Action(amp=amp,
   spatial params (`rho`, `axlambda`), and an implant `Pose` (translation +
   rotation). Unused fields are ignored per model.
 - `State`: percept image `(H, W)` plus optional temporal channels in `aux`
-  (Dynaphos threads activation `A` and charge trace `Q` across `step`).
+  (Dynaphos threads activation `A` and charge trace `Q` across `step`; Axon Map
+  and Scoreboard carry a fading brightness field via `FadingTemporal`).
+
+### Amplitude units
+
+| model | `Action.amp` units | typical range |
+| --- | --- | --- |
+| axonmap | × threshold (unitless) | 0.5–3.0 |
+| scoreboard | µA | 50–300 |
+| dynaphos | µA | 50–300 |
+
+Dataset generation and the Streamlit demo use these bands; parity tests keep
+their own fixed values.
 
 ## Setup
 
@@ -89,9 +101,11 @@ percept, right panel the tissue schematic.
 make world WORLD_DATASET=data/world.h5 EPISODES=256 SEQ_LEN=16
 ```
 
-Produces a combined multi-config HDF5 of `(config_id, s_t, a_t, s_{t+1})`
-transitions across the three models for training the unified model and the
-specialists.
+Produces a combined multi-config HDF5 of `(config_id, episode_id, s_t, a_t,
+s_{t+1})` transitions. Dynaphos rows include rasterized `aux_t` (A/Q maps);
+axonmap/scoreboard aux channels are zero-padded. Metadata records `dt_ms` and
+per-config `percept_scale` for normalization. Use `--silent-tail` for zero-drive
+fade steps after each pulse.
 
 ## Learned unified world model + ablation
 
@@ -101,7 +115,9 @@ self-attention encoder, and a linear patch-unembedding head. It is conditioned o
 percept-model id, implant id, and topography params via prepended conditioning
 tokens **and** FiLM. A `mode` switch collapses the categorical conditioning to
 train per-model **specialists** (the ablation baseline) from the identical
-architecture. Defaults are small and configurable (`dim`, `depth`, `heads`,
+architecture, or **shared_trunk** (shared encoder, per-model output heads).
+Input is 3-channel (percept + Dynaphos A/Q maps; aux zero-padded otherwise).
+Val-only eval holds out entire `config_id`s. Defaults are small and configurable (`dim`, `depth`, `heads`,
 `patch_size`) so the smoke tests run on the M1.
 
 ```bash
@@ -127,8 +143,9 @@ src/sentionaut/
   core/        interfaces, config, registry, device
   topography/  axon_map (retinal), cortical (Polimeni2006 torch port)
   implants/    electrode geometries as tensors
-  models/      effects, axonmap, scoreboard, dynaphos
-  learned/     dataset, model (UnifiedWorldModel), train + ablation
+  models/      effects, fading, axonmap, scoreboard, dynaphos
+  learned/     dataset, model (UnifiedWorldModel), metrics, train + ablation
+  calibrate.py subject rho/axlambda grid search + JSON sidecar
   world.py     WorldModel f(s_t, a_t) -> s_{t+1}
   generate.py  multi-config dataset generation
   animate.py   per-model animations

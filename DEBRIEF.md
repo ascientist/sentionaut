@@ -43,6 +43,30 @@ pulse2percept 0.9.0 source so the torch ports are parity-faithful by constructio
   a50=1.057631326853325e-07, a_thr=9.141886000943878e-08, freq=300, p_dur=0.170`.
   These are mirrored in `src/sentionaut/config/params.yaml`.
 
+## Temporal state (FadingTemporal)
+
+Axon Map and Scoreboard are stateful via a torch port of pulse2percept
+`FadingTemporal` (`models/fading.py`): `dB/dt = -(A+B)/tau` with defaults
+`dt_ms=20`, `fade_tau_ms=100`. Spatial drive is negated when passed to the
+integrator (positive percept brightness vs cathodic p2p convention).
+`forward()` remains instantaneous spatial for single-frame parity;
+`step()` threads the fading field in `State.image`.
+
+Dynaphos aux rasterization: per-electrode A/Q are Gaussian-splatted to `(H,W)`
+maps (`aux_t` in HDF5) for the 3-channel learned input.
+
+Train/val split: hold out by `config_id` (optional Neuralink implant holdout).
+Per-config `percept_scale` (p99) normalizes scoreboard vs dynaphos amplitude mismatch.
+
+Known limitations:
+- Axon segment pruning ceiling when runtime `axlambda` >> build-time value.
+- Neuropythy hybrid path (Polimeni magnification retained for Dynaphos).
+- Co-stim leak is analytical-only; learned model needs `costim_enabled` data.
+- PRIMA + axonmap rejected (subretinal vs epiretinal mismatch).
+
+Subject calibration: `sentionaut-calibrate` fits `(rho, axlambda)` from JSON
+targets (Beyeler-style grid search). Optional `calibration_path` on `Config`.
+
 ## Implementation decisions
 
 - Axon map topography stores RAW per-pixel axon-point coords + recovered

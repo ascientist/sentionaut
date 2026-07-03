@@ -37,6 +37,7 @@ sentionaut-world = "sentionaut.generate:world_cli"
 sentionaut-show = "sentionaut.visualize:cli"
 sentionaut-animate = "sentionaut.animate:cli"
 sentionaut-train = "sentionaut.learned.train:cli"
+sentionaut-calibrate = "sentionaut.calibrate:cli"
 
 [tool.uv.extra-build-dependencies]
 pulse2percept = ["numpy", "cython"]

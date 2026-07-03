@@ -1,16 +1,16 @@
-"""Streamlit demo: pick implant / topography / percept-model, sweep action params.
-
-Left panel = GPU-rendered percept; right panel = tissue-geometry schematic.
-Run with: ``uv run streamlit run src/sentionaut/demo_app.py``.
-"""
+"""Streamlit demo: pick implant / topography / percept-model, sweep action params."""
 
 from __future__ import annotations
+
+import json
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import streamlit as st
 import torch
 
+from sentionaut.calibrate import load_calibration
 from sentionaut.core.base import Action, Pose
 from sentionaut.core.config import CORTICAL_IMPLANTS, RETINAL_IMPLANTS, Config
 from sentionaut.core.device import get_device
@@ -23,8 +23,13 @@ MODELS = ["axonmap", "scoreboard", "dynaphos"]
 
 
 @st.cache_resource
-def _build(model, implant, xystep):
-    cfg = Config(model=model, implant=implant, xrange=(-8, 8), yrange=(-8, 8), xystep=xystep)
+def _build(model, implant, xystep, calibration_path):
+    kwargs = {}
+    if calibration_path:
+        kwargs["calibration_path"] = Path(calibration_path)
+    cfg = Config(
+        model=model, implant=implant, xrange=(-8, 8), yrange=(-8, 8), xystep=xystep, **kwargs
+    )
     dev = get_device()
     return cfg, build_components(cfg, dev)
 
@@ -37,10 +42,16 @@ with st.sidebar:
     implant_name = st.selectbox("Implant", options)
     xystep = st.select_slider("Grid step (dva)", options=[0.25, 0.3, 0.5, 1.0], value=0.5)
 
+    cal_file = st.file_uploader("Subject calibration JSON (optional)", type=["json"])
+    cal_path = None
+    if cal_file is not None:
+        cal_path = Path(st.session_state.get("_cal_tmp", "/tmp/sentionaut_cal.json"))
+        cal_path.write_bytes(cal_file.getvalue())
+
     st.header("Action")
     if cortical:
-        amp = st.slider("Current (uA)", 0.0, 400.0, 250.0, 10.0)
-        rho = st.slider("rho (microns)", 200.0, 1500.0, 1000.0, 50.0)
+        amp = st.slider("Current (uA)", 50.0, 300.0, 200.0, 10.0)
+        rho = None if model == "dynaphos" else st.slider("rho (microns)", 800.0, 1200.0, 1000.0, 50.0)
         freq = pdur = axl = None
     else:
         amp = st.slider("Amplitude (x threshold)", 0.0, 4.0, 2.0, 0.1)
@@ -50,7 +61,11 @@ with st.sidebar:
         axl = st.slider("axlambda (microns)", 200.0, 800.0, 500.0, 25.0)
     n_active = st.slider("Active electrodes", 1, 5, 3)
 
-cfg, (implant, topo, percept_model) = _build(model, implant_name, xystep)
+cfg, (implant, topo, percept_model) = _build(model, implant_name, xystep, cal_path)
+if cal_path and cal_path.exists():
+    cal = load_calibration(cal_path)
+    st.sidebar.caption(f"Calibration: rho={cal.rho:.0f}, axlambda={cal.axlambda:.0f}")
+
 device = topo.grid_x.device if hasattr(topo, "grid_x") else topo.coords.device
 N = implant.n_electrodes
 idx = np.linspace(0, N - 1, n_active).astype(int)

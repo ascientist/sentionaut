@@ -28,15 +28,18 @@ def plot_percept(
 ) -> tuple[plt.Figure, plt.Axes]:
     path = _ensure_path(dataset_path)
     with h5py.File(path, "r") as h5:
-        data = np.asarray(h5["percepts"][sample_index])
-        meta = dict(h5["metadata"].attrs)
+        if "percepts" in h5:
+            data = np.asarray(h5["percepts"][sample_index])
+            meta = dict(h5["metadata"].attrs)
+        else:
+            data = np.asarray(h5["world"]["s_t"][sample_index])
+            meta = dict(h5["metadata"].attrs)
 
     if data.ndim == 3:
         frame = max(0, min(frame_index, data.shape[0] - 1))
-        image = data[frame]
+        image = data[frame] if data.shape[0] > 1 else data[0]
     elif data.ndim == 2:
         image = data
-        frame = 0
     else:
         raise ValueError("Unexpected percept shape")
 
@@ -44,7 +47,7 @@ def plot_percept(
     im = ax.imshow(image, cmap=cmap)
     ax.set_xticks([])
     ax.set_yticks([])
-    display_title = title or f"sample {sample_index}, frame {frame}"
+    display_title = title or f"sample {sample_index}, frame {frame_index}"
     if "implant" in meta:
         display_title = f"{display_title} ({meta['implant']})"
     ax.set_title(display_title)
@@ -54,21 +57,36 @@ def plot_percept(
     return fig, ax
 
 
-def _format_action_block(
-    electrode_names: Sequence[str],
-    electrode_indices: np.ndarray,
-    actions: np.ndarray,
-    mask: np.ndarray,
-) -> str:
-    active = mask.astype(bool)
-    if not np.any(active):
-        return "no stimulation"
-    entries = []
-    for idx, vector in zip(electrode_indices[active], actions[active]):
-        name = electrode_names[int(idx)] if idx >= 0 else "?"
-        amp, freq, phase, delay = vector
-        entries.append(f"{name}: {amp:.2f}uA {freq:.0f}Hz {phase:.2f}ms d={delay:.2f}ms")
-    return "\n".join(entries)
+def plot_transition(
+    dataset_path: Path | str,
+    index: int = 0,
+    *,
+    cmap: str = "magma",
+) -> tuple[plt.Figure, np.ndarray]:
+    """Plot ``(s_t, action summary, s_{t+1})`` for flat world HDF5 schema."""
+    path = _ensure_path(dataset_path)
+    with h5py.File(path, "r") as h5:
+        g = h5["world"]
+        s_t = np.asarray(g["s_t"][index])
+        s_tp1 = np.asarray(g["s_tp1"][index])
+        cfg_idx = int(g["config_id"][index])
+        table = json.loads(h5["metadata"].attrs["config_table"])
+        cfg = table[cfg_idx]
+        amp = g["amp"][index]
+        n_active = int((amp != 0).sum())
+
+    fig, axes = plt.subplots(1, 3, figsize=(10, 3.5))
+    for ax, img, lbl in zip(axes, [s_t, None, s_tp1], ["s_t", "action", "s_{t+1}"]):
+        if img is None:
+            ax.axis("off")
+            ax.set_title(f"{cfg['model']}/{cfg['implant']}\n{n_active} active electrodes")
+            continue
+        ax.imshow(img, cmap=cmap)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_title(lbl)
+    plt.tight_layout()
+    return fig, axes
 
 
 def plot_world_sequence(
@@ -84,21 +102,22 @@ def plot_world_sequence(
 ) -> tuple[plt.Figure, np.ndarray]:
     path = _ensure_path(dataset_path)
     with h5py.File(path, "r") as h5:
-        world = h5["world"]
-        states = np.asarray(world["states"][episode_index, start_step : start_step + length + 1])
-        actions = np.asarray(world["actions"][episode_index, start_step : start_step + length])
-        indices = np.asarray(
-            world["electrode_indices"][episode_index, start_step : start_step + length]
-        )
-        masks = np.asarray(world["action_mask"][episode_index, start_step : start_step + length])
-        electrode_names: Sequence[str] = json.loads(h5["metadata"].attrs["electrode_pool"])
+        if "states" in h5.get("world", {}):
+            return _plot_legacy_world(h5, episode_index, start_step, length, cols, cmap, annotate, colorbar)
+        g = h5["world"]
+        ep_ids = g["episode_id"][:]
+        mask = ep_ids == episode_index
+        indices = np.where(mask)[0]
+        if len(indices) == 0:
+            indices = np.arange(min(length + 1, g["s_t"].shape[0]))
+        sel = indices[start_step : start_step + length + 1]
+        states = np.stack([g["s_t"][i] for i in sel] + [g["s_tp1"][sel[-1]]])
 
     frames = states.shape[0]
     rows = math.ceil(frames / cols)
     fig, axes = plt.subplots(rows, cols, figsize=(cols * 3, rows * 3))
     axes_arr = np.atleast_1d(axes).reshape(rows, cols)
     last_im = None
-
     for i in range(rows * cols):
         ax = axes_arr.flat[i]
         if i >= frames:
@@ -108,27 +127,31 @@ def plot_world_sequence(
         last_im = im
         ax.set_xticks([])
         ax.set_yticks([])
-        absolute_step = start_step + i
-        ax.set_title(f"t={absolute_step}")
-        if annotate and i > 0:
-            text = _format_action_block(
-                electrode_names,
-                indices[i - 1],
-                actions[i - 1],
-                masks[i - 1],
-            )
-            ax.text(
-                0.02,
-                0.02,
-                text,
-                transform=ax.transAxes,
-                fontsize=8,
-                va="bottom",
-                ha="left",
-                color="white",
-                bbox=dict(facecolor="black", alpha=0.5, boxstyle="round,pad=0.2"),
-            )
+        ax.set_title(f"t={start_step + i}")
+    if colorbar and last_im is not None:
+        fig.colorbar(last_im, ax=axes_arr.ravel().tolist(), fraction=0.02, pad=0.04)
+    plt.tight_layout()
+    return fig, axes_arr
 
+
+def _plot_legacy_world(h5, episode_index, start_step, length, cols, cmap, annotate, colorbar):
+    world = h5["world"]
+    states = np.asarray(world["states"][episode_index, start_step : start_step + length + 1])
+    frames = states.shape[0]
+    rows = math.ceil(frames / cols)
+    fig, axes = plt.subplots(rows, cols, figsize=(cols * 3, rows * 3))
+    axes_arr = np.atleast_1d(axes).reshape(rows, cols)
+    last_im = None
+    for i in range(rows * cols):
+        ax = axes_arr.flat[i]
+        if i >= frames:
+            ax.axis("off")
+            continue
+        im = ax.imshow(states[i], cmap=cmap)
+        last_im = im
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_title(f"t={start_step + i}")
     if colorbar and last_im is not None:
         fig.colorbar(last_im, ax=axes_arr.ravel().tolist(), fraction=0.02, pad=0.04)
     plt.tight_layout()
@@ -137,7 +160,7 @@ def plot_world_sequence(
 
 @click.group()
 def cli():
-    """Visualization helpers for retinawm datasets."""
+    """Visualization helpers for sentionaut datasets."""
 
 
 @cli.command()
@@ -145,7 +168,7 @@ def cli():
 @click.option("--index", "sample_index", type=int, default=0, show_default=True)
 @click.option("--frame", "frame_index", type=int, default=0, show_default=True)
 @click.option("--cmap", type=str, default="magma", show_default=True)
-@click.option("--no-colorbar", is_flag=True, help="Hide the colorbar.")
+@click.option("--no-colorbar", is_flag=True)
 def percept(dataset_path: Path, sample_index: int, frame_index: int, cmap: str, no_colorbar: bool):
     fig, _ = plot_percept(
         dataset_path,
@@ -157,6 +180,14 @@ def percept(dataset_path: Path, sample_index: int, frame_index: int, cmap: str, 
     fig.show()
 
 
+@cli.command(name="transition")
+@click.argument("dataset_path", type=click.Path(path_type=Path))
+@click.option("--index", type=int, default=0, show_default=True)
+def transition_cmd(dataset_path: Path, index: int):
+    fig, _ = plot_transition(dataset_path, index=index)
+    fig.show()
+
+
 @cli.command(name="world")
 @click.argument("dataset_path", type=click.Path(path_type=Path))
 @click.option("--episode", "episode_index", type=int, default=0, show_default=True)
@@ -164,8 +195,6 @@ def percept(dataset_path: Path, sample_index: int, frame_index: int, cmap: str, 
 @click.option("--length", type=int, default=4, show_default=True)
 @click.option("--cols", type=int, default=4, show_default=True)
 @click.option("--cmap", type=str, default="magma", show_default=True)
-@click.option("--annotate/--no-annotate", default=True, show_default=True)
-@click.option("--colorbar/--no-colorbar", default=False, show_default=True)
 def world_command(
     dataset_path: Path,
     episode_index: int,
@@ -173,8 +202,6 @@ def world_command(
     length: int,
     cols: int,
     cmap: str,
-    annotate: bool,
-    colorbar: bool,
 ):
     fig, _ = plot_world_sequence(
         dataset_path,
@@ -183,10 +210,8 @@ def world_command(
         length=length,
         cols=cols,
         cmap=cmap,
-        annotate=annotate,
-        colorbar=colorbar,
     )
     fig.show()
 
 
-__all__ = ["plot_percept", "plot_world_sequence", "cli"]
+__all__ = ["plot_percept", "plot_transition", "plot_world_sequence", "cli"]

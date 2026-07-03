@@ -1,7 +1,8 @@
 """``WorldModel``: standardizes any ``PerceptModel`` to ``f(s_t, a_t) -> s_{t+1}``.
 
-Stateless spatial models (axon map, scoreboard) ignore ``s_t``; Dynaphos threads
-its temporal state (activation/charge) through ``State.aux``.
+All three analytical models are stateful: Axon Map and Scoreboard carry a fading
+brightness field via ``FadingTemporal``; Dynaphos additionally threads per-
+electrode activation/charge in ``State.aux`` and exposes rasterized A/Q maps.
 """
 
 from __future__ import annotations

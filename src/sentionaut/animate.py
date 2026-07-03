@@ -70,6 +70,8 @@ def animate_axonmap(outdir: Path, device: torch.device, n_frames: int = 48) -> l
     coords = coords[np.random.default_rng(0).choice(coords.shape[0], size=4000, replace=False)]
     elec = implant.electrode_coords().cpu().numpy()
 
+    pulse_frames = n_frames // 2
+    state = None
     frames = []
     for t in range(n_frames):
         phase = 2 * math.pi * t / n_frames
@@ -79,16 +81,18 @@ def animate_axonmap(outdir: Path, device: torch.device, n_frames: int = 48) -> l
         amp = torch.zeros(N, device=device)
         freq = torch.zeros(N, device=device)
         pdur = torch.zeros(N, device=device)
-        for e in sel_idx:
-            amp[e] = 2.0
-            freq[e] = 30.0
-            pdur[e] = 0.45
+        if t < pulse_frames:
+            for e in sel_idx:
+                amp[e] = 2.0
+                freq[e] = 30.0
+                pdur[e] = 0.45
         action = Action(amp=amp, freq=freq, phase_dur=pdur, rho=rho, axlambda=axl, pose=Pose(dx=dx))
-        img = model.forward(action).detach().cpu().numpy()
+        state = model.step(state, action)
+        img = state.image.detach().cpu().numpy()
 
         fig, (axp, axt) = plt.subplots(1, 2, figsize=(9, 4.5))
         axp.imshow(img, cmap="inferno", extent=_percept_extent(cfg), origin="lower")
-        axp.set_title(f"Axon Map percept\nrho={rho:.0f}  axlambda={axl:.0f}")
+        axp.set_title(f"Axon Map percept\nrho={rho:.0f}  axlambda={axl:.0f}" + (" (fade)" if t >= pulse_frames else ""))
         axp.set_xlabel("x (dva)")
         axp.set_ylabel("y (dva)")
         axt.scatter(coords[:, 0], coords[:, 1], s=0.5, c="0.7", alpha=0.4)
@@ -119,7 +123,8 @@ def _animate_cortical(
     implant, topo, model = build_components(cfg, device)
     N = implant.n_electrodes
     sel_idx = [0, 25, 50]
-    amp_val = 400.0 if model_name == "dynaphos" else 2500.0
+    amp_val = 200.0 if model_name == "dynaphos" else 250.0
+    pulse_frames = n_frames // 2
 
     cortex = topo.cortex_xy["v1"].cpu().numpy()
     cortex = cortex[np.isfinite(cortex).all(axis=1)]
@@ -129,24 +134,22 @@ def _animate_cortical(
     frames = []
     for t in range(n_frames):
         frac = t / max(n_frames - 1, 1)
-        # Sweep electrodes deeper into the same hemisphere (rising eccentricity)
-        # to expose cortical-magnification growth of the phosphenes.
         dx = 5000.0 * frac
         amp = torch.zeros(N, device=device)
-        for e in sel_idx:
-            amp[e] = amp_val
-        rho = None if model_name == "dynaphos" else 2500.0
+        if t < pulse_frames:
+            for e in sel_idx:
+                amp[e] = amp_val
+        rho = None if model_name == "dynaphos" else 1000.0
         action = Action(amp=amp, rho=rho, pose=Pose(dx=dx))
-        if thread_state:
-            state = model.step(state, action)
-            img = state.image.detach().cpu().numpy()
-        else:
-            img = model.forward(action).detach().cpu().numpy()
+        state = model.step(state, action)
+        img = state.image.detach().cpu().numpy()
 
         fig, (axp, axt) = plt.subplots(1, 2, figsize=(9, 4.5))
         axp.imshow(img, cmap="inferno", extent=_percept_extent(cfg), origin="lower")
         title = f"{model_name} percept"
-        if thread_state:
+        if t >= pulse_frames:
+            title += " (fade)"
+        elif thread_state:
             title += f"\nframe {t} (charge buildup)"
         axp.set_title(title)
         axp.set_xlabel("x (dva)")
@@ -168,7 +171,7 @@ def _animate_cortical(
 
 
 def animate_scoreboard(outdir: Path, device: torch.device, n_frames: int = 48) -> list[Path]:
-    return _animate_cortical("scoreboard", outdir, device, n_frames, thread_state=False)
+    return _animate_cortical("scoreboard", outdir, device, n_frames, thread_state=True)
 
 
 def animate_dynaphos(outdir: Path, device: torch.device, n_frames: int = 48) -> list[Path]:

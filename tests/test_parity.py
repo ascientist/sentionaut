@@ -127,6 +127,46 @@ def test_dynaphos_parity():
     assert np.abs(ref_frames - seq).max() < 1e-3
 
 
+def test_scoreboard_temporal_fade():
+    cfg = Config(
+        model="scoreboard", implant="orion", xrange=(-5, 5), yrange=(-5, 5),
+        xystep=0.5, rho=1000.0, regions=("v1",),
+    )
+    implant, _, model = build_components(cfg, CPU)
+    amp = torch.zeros(implant.n_electrodes)
+    amp[0] = 100.0
+    act = Action(amp=amp)
+    state = model.step(None, act)
+    peak = state.image.max().item()
+    state = model.step(state, Action(amp=torch.zeros_like(amp)))
+    assert state.image.max().item() > 0
+    assert state.image.max().item() < peak
+
+
+@pytest.mark.slow
+def test_mps_parity_smoke():
+    if not torch.backends.mps.is_available():
+        pytest.skip("MPS unavailable")
+    cfg = Config(model="axonmap", implant="argusii", xrange=(-4, 4), yrange=(-4, 4), xystep=1.0)
+    _, _, cpu_m = build_components(cfg, CPU)
+    _, _, mps_m = build_components(cfg, torch.device("mps"))
+    amp = torch.zeros(cpu_m.implant.n_electrodes)
+    amp[5] = 2.0
+    act_cpu = Action(
+        amp=amp,
+        freq=torch.full_like(amp, 30.0),
+        phase_dur=torch.full_like(amp, 0.45),
+    )
+    act_mps = Action(
+        amp=amp.to("mps"),
+        freq=torch.full_like(amp, 30.0).to("mps"),
+        phase_dur=torch.full_like(amp, 0.45).to("mps"),
+    )
+    c = cpu_m.forward(act_cpu).numpy()
+    g = mps_m.forward(act_mps).detach().cpu().numpy()
+    assert np.abs(c - g).max() < 1e-3
+
+
 @pytest.mark.slow
 def test_cpu_gpu_speed_benchmark():
     cfg = Config(model="axonmap", implant="argusii", xrange=(-20, 20), yrange=(-20, 20), xystep=0.2)

@@ -2,8 +2,6 @@
 
 Gaussian phosphenes in dva whose size derives from cortical magnification +
 stimulation current, plus a temporal leaky integrator with charge accumulation.
-This is the one model whose ``step`` truly threads temporal state across time
-(activation ``A`` and memory trace ``Q`` per electrode).
 """
 
 from __future__ import annotations
@@ -25,7 +23,13 @@ def _load_dynaphos_params() -> dict:
 
 
 class DynaphosTorch(PerceptModel):
-    def __init__(self, params: dict | None = None):
+    def __init__(
+        self,
+        params: dict | None = None,
+        costim_enabled: bool = False,
+        costim_kappa: float = 1.0,
+        max_percept: float | None = None,
+    ):
         super().__init__()
         p = params or _load_dynaphos_params()
         self.dt = float(p["dt"])
@@ -39,30 +43,35 @@ class DynaphosTorch(PerceptModel):
         self.a_thr = float(p["a_thr"])
         self.freq = float(p["freq"])
         self.p_dur = float(p["p_dur"])
+        self.costim_enabled = costim_enabled
+        self.costim_kappa = costim_kappa
+        self.max_percept = max_percept
 
     def build(self, implant: Implant, topography: CorticalTopography) -> "DynaphosTorch":
         self.implant = implant
         self.topography = topography
         device = topography.grid_x.device
         dtype = topography.grid_x.dtype
-        elec_xy = implant.electrode_coords()  # (N, 2) cortex microns
-        # Phosphene location in dva + eccentricity-dependent magnification.
-        # The complex-log inverse map runs in float64 on CPU (MPS lacks float64).
+        elec_xy = implant.electrode_coords()
         ex = elec_xy[:, 0].detach().cpu().to(torch.float64)
         ey = elec_xy[:, 1].detach().cpu().to(torch.float64)
         px, py = topography.polimeni.v1_to_dva(ex, ey)
         r = torch.hypot(px, py)
-        M = topography.polimeni.magnification(r)  # mm/dva
+        M = topography.polimeni.magnification(r)
         self.ploc = torch.stack([px, py], dim=-1).to(device=device, dtype=dtype)
         self.M = M.to(device=device, dtype=dtype)
         self.elec_left = (elec_xy[:, 0] < topography.boundary).to(device)
-        self.xRange = topography.grid_x[0, :].contiguous()  # (W,)
-        self.yRange = topography.grid_y[:, 0].contiguous()  # (H,)
+        self.xRange = topography.grid_x[0, :].contiguous()
+        self.yRange = topography.grid_y[:, 0].contiguous()
+        # ponytail: O(E²) pair scan at build; fine for E ≤ 512 demo scale.
+        n = elec_xy.shape[0]
+        d2 = torch.cdist(elec_xy, elec_xy, p=2).pow(2)
+        d2.fill_diagonal_(float("inf"))
+        self._elec_d2 = d2
         self._built = True
         return self
 
     def _phosphene_geometry(self, pose):
-        """Return (ploc, M, elec_left) for a given pose (cached for identity)."""
         if pose is None or (pose.dx == 0.0 and pose.dy == 0.0 and pose.rot == 0.0):
             return self.ploc, self.M, self.elec_left
         topo = self.topography
@@ -86,6 +95,22 @@ class DynaphosTorch(PerceptModel):
         image = torch.zeros(topo.grid_shape, device=device, dtype=topo.grid_x.dtype)
         return State(image=image, aux={"A": z.clone(), "Q": z.clone(), "sigma": z.clone()})
 
+    def _apply_costim(self, amp: torch.Tensor) -> torch.Tensor:
+        if not self.costim_enabled:
+            return amp
+        active = amp > 0
+        if active.sum() < 2:
+            return amp
+        I = amp.clone()
+        d2 = self._elec_d2.to(I.device)
+        for i in torch.nonzero(active, as_tuple=False).flatten().tolist():
+            for j in torch.nonzero(active, as_tuple=False).flatten().tolist():
+                if i == j:
+                    continue
+                dist2 = max(float(d2[i, j]), 1e-12)
+                I[i] = I[i] + self.costim_kappa * amp[j] / dist2
+        return I
+
     def step(self, state: State | None, action: Action) -> State:
         topo = self.topography
         device = topo.grid_x.device
@@ -97,21 +122,31 @@ class DynaphosTorch(PerceptModel):
         sigma = state.aux["sigma"]
 
         amp = action.amp.to(device)
-        freq = self.freq if action.freq is None else float(action.freq.flatten()[0])
-        p_dur = self.p_dur if action.phase_dur is None else float(action.phase_dur.flatten()[0])
+        amp = self._apply_costim(amp)
+        n = amp.shape[0]
+        if action.freq is None:
+            freq = torch.full((n,), self.freq, device=device, dtype=amp.dtype)
+        else:
+            freq = action.freq.to(device)
+        if action.phase_dur is None:
+            p_dur = torch.full((n,), self.p_dur, device=device, dtype=amp.dtype)
+        else:
+            p_dur = action.phase_dur.to(device)
 
         ploc, M, elec_left = self._phosphene_geometry(action.pose)
         I0 = self.rheobase
         K = self.excitability
         Ieff = torch.clamp((amp - I0 - Q) * freq * (p_dur / 1000.0), min=0.0)
         Q = Q + ((-Q / (self.tau_trace / 1000.0)) + Ieff * self.kappa_trace) * (self.dt / 1000.0)
-        D = 2.0 * torch.sqrt(torch.clamp(amp, min=0.0) / K)  # mm
-        P = D / M  # dva
+        D = 2.0 * torch.sqrt(torch.clamp(amp, min=0.0) / K)
+        P = D / M
         sigma = torch.where(amp > 0, torch.clamp(P / 2.0, min=1e-22), sigma)
         A = A + ((-A / (self.tau_act / 1000.0)) + Ieff * 1e-6) * (self.dt / 1000.0)
         brightness = torch.sigmoid(self.sig_slope * (A - self.a50))
 
         image = self._render(A, sigma, brightness, ploc, elec_left)
+        if self.max_percept is not None:
+            image = torch.clamp(image, max=self.max_percept)
         return State(image=image, aux={"A": A, "Q": Q, "sigma": sigma})
 
     def _render(self, A, sigma, brightness, ploc, elec_left) -> torch.Tensor:
@@ -119,28 +154,50 @@ class DynaphosTorch(PerceptModel):
         H, W = topo.grid_shape
         device = topo.grid_x.device
         dtype = topo.grid_x.dtype
-        bright = torch.zeros(H, W, device=device, dtype=dtype)
         active = A >= self.a_thr
-        x0 = ploc[:, 0]
-        y0 = ploc[:, 1]
-        for e in torch.nonzero(active, as_tuple=False).flatten().tolist():
-            s = sigma[e]
-            if s <= 0:
-                continue
-            gx = torch.exp(-((self.xRange - x0[e]) ** 2) / (2.0 * s**2))  # (W,)
-            if topo.polimeni.split_map:
-                cutoff = self.xRange <= 0 if bool(elec_left[e]) else self.xRange > 0
-                gx = torch.where(cutoff, torch.zeros_like(gx), gx)
-            gy = torch.exp(-((self.yRange - y0[e]) ** 2) / (2.0 * s**2))  # (H,)
-            gauss = torch.outer(gy, gx)
-            bright = bright + gauss * brightness[e]
+        if not active.any():
+            return torch.zeros(H, W, device=device, dtype=dtype)
+
+        idx = torch.nonzero(active, as_tuple=False).flatten()
+        x0 = ploc[idx, 0]
+        y0 = ploc[idx, 1]
+        s = sigma[idx]
+        b = brightness[idx]
+        el = elec_left[idx]
+
+        gx = torch.exp(-((self.xRange[None, :] - x0[:, None]) ** 2) / (2.0 * s[:, None] ** 2))
+        if topo.polimeni.split_map:
+            left_mask = self.xRange[None, :] <= 0
+            cutoff = torch.where(el[:, None], left_mask, ~left_mask)
+            gx = torch.where(cutoff, torch.zeros_like(gx), gx)
+        gy = torch.exp(-((self.yRange[:, None] - y0[None, :]) ** 2) / (2.0 * s[None, :] ** 2))
+        gauss = gy.T[:, :, None] * gx[:, None, :]
+        bright = (gauss * b[:, None, None]).sum(dim=0)
         return torch.clamp(bright, 0.0, 1.0)
+
+    def rasterize_aux(self, state: State) -> tuple[torch.Tensor, torch.Tensor]:
+        """Rasterize per-electrode A and Q to (H, W) maps for learned aux channels."""
+        A = state.aux["A"]
+        Q = state.aux["Q"]
+        sigma = state.aux["sigma"]
+        ploc = self.ploc
+        elec_left = self.elec_left
+        b_a = torch.sigmoid(self.sig_slope * (A - self.a50))
+        b_q = torch.clamp(Q / (Q.max() + 1e-12), 0.0, 1.0) if Q.max() > 0 else Q
+        a_map = self._render(A, sigma, b_a, ploc, elec_left)
+        q_map = self._render(
+            torch.where(A >= self.a_thr, A, torch.zeros_like(A)),
+            sigma,
+            b_q,
+            ploc,
+            elec_left,
+        )
+        return a_map, q_map
 
     def forward(self, action: Action) -> torch.Tensor:
         return self.step(None, action).image
 
     def predict_sequence(self, action: Action, n_steps: int) -> torch.Tensor:
-        """Run ``n_steps`` of constant stimulation, returning ``(n_steps, H, W)``."""
         state = self.initial_state()
         frames = []
         for _ in range(n_steps):

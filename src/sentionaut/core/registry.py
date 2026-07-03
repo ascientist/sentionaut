@@ -33,15 +33,30 @@ def build_model(config: Config) -> PerceptModel:
     if config.model == "axonmap":
         from ..models.axonmap import BiphasicAxonMapTorch
 
-        return BiphasicAxonMapTorch(rho=config.rho, axlambda=config.axlambda)
+        return BiphasicAxonMapTorch(
+            rho=config.rho,
+            axlambda=config.axlambda,
+            dt_ms=config.dt_ms,
+            fade_tau_ms=config.fade_tau_ms,
+            max_percept=config.max_percept,
+        )
     if config.model == "scoreboard":
         from ..models.scoreboard import ScoreboardTorch
 
-        return ScoreboardTorch(rho=config.rho)
+        return ScoreboardTorch(
+            rho=config.rho,
+            dt_ms=config.dt_ms,
+            fade_tau_ms=config.fade_tau_ms,
+            max_percept=config.max_percept,
+        )
     if config.model == "dynaphos":
         from ..models.dynaphos import DynaphosTorch
 
-        return DynaphosTorch()
+        return DynaphosTorch(
+            costim_enabled=config.costim_enabled,
+            costim_kappa=config.costim_kappa,
+            max_percept=config.max_percept,
+        )
     raise ValueError(f"Unknown model '{config.model}'.")
 
 

@@ -44,6 +44,17 @@ class Config:
     # Prefer a NeuropythyMap-backed cortical topography when available (optional;
     # falls back to Polimeni2006Map). See topography/neuropythy.py.
     use_neuropythy: bool = False
+    # Temporal integration (FadingTemporal defaults, ms).
+    dt_ms: float = 20.0
+    fade_tau_ms: float = 100.0
+    # Optional nonlinear ceiling on summed percepts (ablation only).
+    max_percept: float | None = None
+    # Dynaphos multi-electrode co-stimulation leak (van der Grinten 2024).
+    costim_enabled: bool = False
+    costim_kappa: float = 1.0
+    # Subject-specific spatial calibration sidecar.
+    subject_id: str | None = None
+    calibration_path: Path | None = None
 
     def __post_init__(self) -> None:
         self.model = self.model.lower()
@@ -58,6 +69,20 @@ class Config:
                 f"Cortical model '{self.model}' needs a cortical implant "
                 f"({sorted(CORTICAL_IMPLANTS)}), got '{self.implant}'."
             )
+        if self.implant == "prima" and self.model == "axonmap":
+            raise ValueError(
+                "PRIMA is subretinal; Biphasic Axon Map is epiretinal-only. "
+                "Use scoreboard/dynaphos for cortical PRIMA geometry export, or "
+                "switch to a retinal implant."
+            )
+        if self.calibration_path is not None:
+            from ..calibrate import load_calibration
+
+            cal = load_calibration(self.calibration_path)
+            self.rho = cal.rho
+            self.axlambda = cal.axlambda
+            if cal.eye:
+                self.eye = cal.eye
 
     @property
     def is_cortical(self) -> bool:
@@ -68,6 +93,8 @@ class Config:
         d["xrange"] = list(self.xrange)
         d["yrange"] = list(self.yrange)
         d["regions"] = list(self.regions)
+        if d.get("calibration_path") is not None:
+            d["calibration_path"] = str(d["calibration_path"])
         return d
 
     @classmethod
@@ -78,6 +105,8 @@ class Config:
                 d[key] = tuple(d[key])
         if "regions" in d and d["regions"] is not None:
             d["regions"] = tuple(d["regions"])
+        if "calibration_path" in d and d["calibration_path"] is not None:
+            d["calibration_path"] = Path(d["calibration_path"])
         fields = {f for f in cls.__dataclass_fields__}
         return cls(**{k: v for k, v in d.items() if k in fields})
 

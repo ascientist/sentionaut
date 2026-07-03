@@ -1,3 +1,6 @@
+dt_ms: 20.0
+fade_tau_ms: 100.0
+
 # Dynaphos model constants, mirrored from pulse2percept 0.9.0
 # (pulse2percept/models/cortex/dynaphos.py, DynaphosModel.get_default_params).
 # See DEBRIEF.md.

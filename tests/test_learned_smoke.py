@@ -49,6 +49,7 @@ def test_single_batch_inference(tmp_path):
             batch["topo_params"],
         )
     assert out.shape == batch["s_tp1"].shape
+    assert batch["s_t"].shape[1] == 3
     assert torch.isfinite(out).all()
 
 
