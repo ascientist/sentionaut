@@ -9,6 +9,8 @@ a single conditioned learned world model evaluated against per-model specialists
 The three analytical models run differentiably on GPU (Apple **MPS** locally,
 CUDA on cluster) and are parity-tested against pulse2percept.
 
+**Docs:** [ascientist.github.io/sentionaut](https://ascientist.github.io/sentionaut/)
+
 ## Components
 
 Three axes are independently swappable via a `Config`:
@@ -55,6 +57,17 @@ percept = model.forward(Action(amp=amp,
 
 Dataset generation and the Streamlit demo use these bands; parity tests keep
 their own fixed values.
+
+## Documentation
+
+Browse the site at
+[ascientist.github.io/sentionaut](https://ascientist.github.io/sentionaut/)
+(GitHub Pages, rebuilt on every push to `main`).
+
+```bash
+make docs         # build → site/
+make docs-serve   # preview on localhost:8000
+```
 
 ## Setup
 

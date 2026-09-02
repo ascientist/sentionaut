@@ -20,6 +20,9 @@ logs/
 .ruff_cache/
 .pytest_cache/
 
+# Zensical build output
+site/
+
 # OS
 .DS_Store
 
