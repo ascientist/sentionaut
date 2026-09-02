@@ -62,7 +62,7 @@ their own fixed values.
 
 Browse the site at
 [ascientist.github.io/sentionaut](https://ascientist.github.io/sentionaut/)
-(GitHub Pages, rebuilt on every push to `main`).
+(GitHub Pages from the `gh-pages` branch, rebuilt on every push to `main`).
 
 ```bash
 make docs         # build → site/

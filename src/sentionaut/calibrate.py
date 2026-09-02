@@ -12,7 +12,7 @@ import torch
 from .core.base import Action, Pose
 from .core.config import Config
 from .core.registry import build_components
-from .learned.metrics import max_abs, mse, ssim
+from .learned.metrics import mse, ssim
 
 
 @dataclass
@@ -27,7 +27,9 @@ class SubjectCalibration:
 def load_calibration(path: str | Path) -> SubjectCalibration:
     with open(path) as fh:
         d = json.load(fh)
-    return SubjectCalibration(**{k: v for k, v in d.items() if k in SubjectCalibration.__dataclass_fields__})
+    return SubjectCalibration(
+        **{k: v for k, v in d.items() if k in SubjectCalibration.__dataclass_fields__}
+    )
 
 
 def save_calibration(cal: SubjectCalibration, path: str | Path) -> Path:
@@ -38,7 +40,9 @@ def save_calibration(cal: SubjectCalibration, path: str | Path) -> Path:
     return path
 
 
-def _render_percept(cfg: Config, rho: float, axlambda: float, targets: list[dict]) -> list[np.ndarray]:
+def _render_percept(
+    cfg: Config, rho: float, axlambda: float, targets: list[dict]
+) -> list[np.ndarray]:
     device = torch.device("cpu")
     c = Config(**{**cfg.to_dict(), "rho": rho, "axlambda": axlambda, "model": "axonmap"})
     implant, _, model = build_components(c, device)

@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import math
 from pathlib import Path
-from typing import Sequence
 
 import click
 import h5py
@@ -103,7 +102,9 @@ def plot_world_sequence(
     path = _ensure_path(dataset_path)
     with h5py.File(path, "r") as h5:
         if "states" in h5.get("world", {}):
-            return _plot_legacy_world(h5, episode_index, start_step, length, cols, cmap, annotate, colorbar)
+            return _plot_legacy_world(
+                h5, episode_index, start_step, length, cols, cmap, annotate, colorbar
+            )
         g = h5["world"]
         ep_ids = g["episode_id"][:]
         mask = ep_ids == episode_index

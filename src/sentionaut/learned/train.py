@@ -49,7 +49,9 @@ def single_batch_step(model: UnifiedWorldModel, batch: dict, device: torch.devic
     return float(loss.detach().cpu())
 
 
-def evaluate(model: UnifiedWorldModel, dataset: WorldTransitionDataset, device: torch.device) -> dict:
+def evaluate(
+    model: UnifiedWorldModel, dataset: WorldTransitionDataset, device: torch.device
+) -> dict:
     loader = DataLoader(dataset, batch_size=16)
     model.eval()
     totals = {"mse": 0.0, "ssim": 0.0, "max_abs": 0.0}
@@ -135,7 +137,9 @@ def cli():
 @cli.command(name="train")
 @click.option("--dataset", "dataset_path", type=click.Path(), required=True)
 @click.option("--config", "config_path", type=click.Path(), default=None)
-@click.option("--mode", type=click.Choice(["shared", "specialist", "shared_trunk"]), default="shared")
+@click.option(
+    "--mode", type=click.Choice(["shared", "specialist", "shared_trunk"]), default="shared"
+)
 @click.option("--device", type=str, default=None)
 @click.option("--log", "log_path", type=click.Path(path_type=Path), default=None)
 def train_cmd(dataset_path, config_path, mode, device, log_path):

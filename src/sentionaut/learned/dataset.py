@@ -7,7 +7,7 @@ import json
 import h5py
 import numpy as np
 import torch
-from torch.utils.data import Dataset, Subset
+from torch.utils.data import Dataset
 
 from ..core.config import Config
 

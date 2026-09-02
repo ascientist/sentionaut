@@ -83,9 +83,7 @@ class ScoreboardTorch(PerceptModel):
         device = topo.grid_x.device
         drive = self.spatial_forward(action)
         if state is None:
-            B = FadingTemporalTorch.initial_brightness(
-                topo.grid_shape, device, topo.grid_x.dtype
-            )
+            B = FadingTemporalTorch.initial_brightness(topo.grid_shape, device, topo.grid_x.dtype)
         else:
             B = state.image
         B_new = self.fading.step(B, -drive, self.dt_ms)
