@@ -9,6 +9,8 @@ a single conditioned learned world model evaluated against per-model specialists
 The three analytical models run differentiably on GPU (Apple **MPS** locally,
 CUDA on cluster) and are parity-tested against pulse2percept.
 
+**Docs:** [ascientist.github.io/sentionaut](https://ascientist.github.io/sentionaut/)
+
 ## Components
 
 Three axes are independently swappable via a `Config`:
@@ -58,15 +60,14 @@ their own fixed values.
 
 ## Documentation
 
-Modality-tagged model docs (Zensical):
+Browse the site at
+[ascientist.github.io/sentionaut](https://ascientist.github.io/sentionaut/)
+(GitHub Pages, rebuilt on every push to `main`).
 
 ```bash
 make docs         # build → site/
 make docs-serve   # preview on localhost:8000
 ```
-
-See [`docs/`](docs/) for the project overview, `brain2vision` nomenclature, and
-per-model paper citations.
 
 ## Setup
 

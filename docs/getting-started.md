@@ -32,6 +32,8 @@ Swap `model` / `implant` in `Config` to try scoreboard or dynaphos. See the
 
 ## Docs site
 
+Published at [ascientist.github.io/sentionaut](https://ascientist.github.io/sentionaut/).
+
 ```bash
 make docs         # uv run zensical build → site/
 make docs-serve   # live preview on localhost:8000
