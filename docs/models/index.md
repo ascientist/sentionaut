@@ -1,5 +1,7 @@
 # Models
 
+[Home](../index.md) · [Getting started](../getting-started.md) · [Nomenclature](../nomenclature.md) · [Models](index.md) · [References](../references.md)
+
 Catalog of Sentionaut models. Every entry is **`brain2vision`**: electrode
 stimulation in, predicted visual percept out. See
 [Nomenclature](../nomenclature.md) for the tagging rules.

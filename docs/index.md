@@ -1,5 +1,7 @@
 # Sentionaut
 
+[Home](index.md) · [Getting started](getting-started.md) · [Nomenclature](nomenclature.md) · [Models](models/index.md) · [References](references.md)
+
 Sentionaut is a modular, GPU-native PyTorch framework for **prosthetic vision**.
 It reimplements pulse2percept's retinal and cortical phosphene models as
 differentiable Torch ports, wraps them in a shared world-model interface

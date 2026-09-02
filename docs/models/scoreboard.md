@@ -1,5 +1,7 @@
 # Scoreboard
 
+[Home](../index.md) · [Getting started](../getting-started.md) · [Nomenclature](../nomenclature.md) · [Models](index.md) · [References](../references.md)
+
 **Modality:** `brain2vision` · **Tissue:** cortical
 
 ## Paper
