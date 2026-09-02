@@ -23,6 +23,7 @@ dependencies = [
 dev = [
     "pytest>=8.0",
     "ruff>=0.5",
+    "zensical>=0.0.40",
 ]
 # Optional MRI-derived cortical map. Heavy and requires downloadable subject
 # data, so it is NOT installed by default; the NeuropythyMap topography falls
@@ -58,3 +59,8 @@ markers = [
 [build-system]
 requires = ["uv_build>=0.9.7,<0.10.0"]
 build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "zensical>=0.0.40",
+]

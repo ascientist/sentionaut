@@ -56,6 +56,18 @@ percept = model.forward(Action(amp=amp,
 Dataset generation and the Streamlit demo use these bands; parity tests keep
 their own fixed values.
 
+## Documentation
+
+Modality-tagged model docs (Zensical):
+
+```bash
+make docs         # build → site/
+make docs-serve   # preview on localhost:8000
+```
+
+See [`docs/`](docs/) for the project overview, `brain2vision` nomenclature, and
+per-model paper citations.
+
 ## Setup
 
 ```bash

@@ -8,7 +8,7 @@ SEQ_LEN ?= 16
 MODEL ?= axonmap
 OUTDIR ?= artifacts
 
-.PHONY: setup dataset world demo animate train ablate test lint format clean
+.PHONY: setup dataset world demo animate train ablate test lint format docs docs-serve clean
 
 setup:
 	$(UV) sync $(ENV_FLAGS)
@@ -40,5 +40,12 @@ lint:
 format:
 	$(UV) run ruff format --check src tests
 
+docs:
+	$(UV) run zensical build
+
+docs-serve:
+	$(UV) run zensical serve
+
 clean:
 	rm -f $(DATASET) $(WORLD_DATASET)
+	rm -rf site

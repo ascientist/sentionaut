@@ -1,0 +1,21 @@
+[project]
+site_name = "Sentionaut"
+site_description = "GPU-native prosthetic vision world models, classified by modality."
+docs_dir = "docs"
+site_dir = "site"
+repo_url = "https://github.com/ascientist/sentionaut"
+repo_name = "ascientist/sentionaut"
+
+nav = [
+  { "Home" = "index.md" },
+  { "Getting started" = "getting-started.md" },
+  { "Nomenclature" = "nomenclature.md" },
+  { "Models" = [
+    "models/index.md",
+    "models/axonmap.md",
+    "models/scoreboard.md",
+    "models/dynaphos.md",
+    "models/world-model.md",
+  ] },
+  { "References" = "references.md" },
+]
