@@ -1,5 +1,7 @@
 # Getting started
 
+[Home](index.md) · [Getting started](getting-started.md) · [Nomenclature](nomenclature.md) · [Models](models/index.md) · [References](references.md)
+
 ## Install
 
 ```bash
@@ -32,8 +34,7 @@ Swap `model` / `implant` in `Config` to try scoreboard or dynaphos. See the
 
 ## Docs site
 
-Published at [ascientist.github.io/sentionaut](https://ascientist.github.io/sentionaut/)
-(GitHub Pages, source branch `gh-pages`).
+Read these pages on GitHub from [docs/index.md](index.md). Local preview:
 
 ```bash
 make docs         # uv run zensical build → site/

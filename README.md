@@ -9,7 +9,7 @@ a single conditioned learned world model evaluated against per-model specialists
 The three analytical models run differentiably on GPU (Apple **MPS** locally,
 CUDA on cluster) and are parity-tested against pulse2percept.
 
-**Docs:** [ascientist.github.io/sentionaut](https://ascientist.github.io/sentionaut/)
+**Docs:** [docs/index.md](docs/index.md)
 
 ## Components
 
@@ -60,14 +60,18 @@ their own fixed values.
 
 ## Documentation
 
-Browse the site at
-[ascientist.github.io/sentionaut](https://ascientist.github.io/sentionaut/)
-(GitHub Pages from the `gh-pages` branch, rebuilt on every push to `main`).
+Browse on GitHub: [docs/index.md](docs/index.md).
 
 ```bash
 make docs         # build → site/
 make docs-serve   # preview on localhost:8000
 ```
+
+A Zensical site is also pushed to the `gh-pages` branch. GitHub Pages is not
+enabled on this private repo, so
+[ascientist.github.io/sentionaut](https://ascientist.github.io/sentionaut/)
+404s until an admin sets **Settings → Pages → Deploy from a branch →
+`gh-pages` / root**. Private Pages also need GitHub Pro.
 
 ## Setup
 
