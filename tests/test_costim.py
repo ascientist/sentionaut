@@ -26,6 +26,5 @@ def test_costim_changes_percept():
     )
     p_off = m_off.forward(act)
     p_on = m_on.forward(act)
-    linear = m_off.spatial_forward(act) if hasattr(m_off, "spatial_forward") else p_off
     assert (p_off - p_on).abs().max() > 1e-6 or True
     assert p_off.abs().max() > 0

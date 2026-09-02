@@ -129,8 +129,13 @@ def test_dynaphos_parity():
 
 def test_scoreboard_temporal_fade():
     cfg = Config(
-        model="scoreboard", implant="orion", xrange=(-5, 5), yrange=(-5, 5),
-        xystep=0.5, rho=1000.0, regions=("v1",),
+        model="scoreboard",
+        implant="orion",
+        xrange=(-5, 5),
+        yrange=(-5, 5),
+        xystep=0.5,
+        rho=1000.0,
+        regions=("v1",),
     )
     implant, _, model = build_components(cfg, CPU)
     amp = torch.zeros(implant.n_electrodes)

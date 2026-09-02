@@ -92,7 +92,10 @@ def animate_axonmap(outdir: Path, device: torch.device, n_frames: int = 48) -> l
 
         fig, (axp, axt) = plt.subplots(1, 2, figsize=(9, 4.5))
         axp.imshow(img, cmap="inferno", extent=_percept_extent(cfg), origin="lower")
-        axp.set_title(f"Axon Map percept\nrho={rho:.0f}  axlambda={axl:.0f}" + (" (fade)" if t >= pulse_frames else ""))
+        axp.set_title(
+            f"Axon Map percept\nrho={rho:.0f}  axlambda={axl:.0f}"
+            + (" (fade)" if t >= pulse_frames else "")
+        )
         axp.set_xlabel("x (dva)")
         axp.set_ylabel("y (dva)")
         axt.scatter(coords[:, 0], coords[:, 1], s=0.5, c="0.7", alpha=0.4)

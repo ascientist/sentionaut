@@ -94,9 +94,7 @@ class BiphasicAxonMapTorch(PerceptModel):
         device = topo.coords.device
         drive = self.spatial_forward(action)
         if state is None:
-            B = FadingTemporalTorch.initial_brightness(
-                topo.grid_shape, device, topo.coords.dtype
-            )
+            B = FadingTemporalTorch.initial_brightness(topo.grid_shape, device, topo.coords.dtype)
         else:
             B = state.image
         # Spatial drive is positive brightness; FadingTemporal expects cathodic (negative) A.

@@ -64,7 +64,6 @@ class DynaphosTorch(PerceptModel):
         self.xRange = topography.grid_x[0, :].contiguous()
         self.yRange = topography.grid_y[:, 0].contiguous()
         # ponytail: O(E²) pair scan at build; fine for E ≤ 512 demo scale.
-        n = elec_xy.shape[0]
         d2 = torch.cdist(elec_xy, elec_xy, p=2).pow(2)
         d2.fill_diagonal_(float("inf"))
         self._elec_d2 = d2
@@ -101,15 +100,15 @@ class DynaphosTorch(PerceptModel):
         active = amp > 0
         if active.sum() < 2:
             return amp
-        I = amp.clone()
-        d2 = self._elec_d2.to(I.device)
+        leaked = amp.clone()
+        d2 = self._elec_d2.to(leaked.device)
         for i in torch.nonzero(active, as_tuple=False).flatten().tolist():
             for j in torch.nonzero(active, as_tuple=False).flatten().tolist():
                 if i == j:
                     continue
                 dist2 = max(float(d2[i, j]), 1e-12)
-                I[i] = I[i] + self.costim_kappa * amp[j] / dist2
-        return I
+                leaked[i] = leaked[i] + self.costim_kappa * amp[j] / dist2
+        return leaked
 
     def step(self, state: State | None, action: Action) -> State:
         topo = self.topography

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -51,7 +50,9 @@ with st.sidebar:
     st.header("Action")
     if cortical:
         amp = st.slider("Current (uA)", 50.0, 300.0, 200.0, 10.0)
-        rho = None if model == "dynaphos" else st.slider("rho (microns)", 800.0, 1200.0, 1000.0, 50.0)
+        rho = (
+            None if model == "dynaphos" else st.slider("rho (microns)", 800.0, 1200.0, 1000.0, 50.0)
+        )
         freq = pdur = axl = None
     else:
         amp = st.slider("Amplitude (x threshold)", 0.0, 4.0, 2.0, 0.1)

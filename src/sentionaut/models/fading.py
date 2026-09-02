@@ -12,9 +12,7 @@ class FadingTemporalTorch:
         self.tau_ms = tau_ms
         self.thresh_percept = thresh_percept
 
-    def step(
-        self, B: torch.Tensor, drive: torch.Tensor, dt_ms: float
-    ) -> torch.Tensor:
+    def step(self, B: torch.Tensor, drive: torch.Tensor, dt_ms: float) -> torch.Tensor:
         B_new = B + dt_ms * (-(drive + B) / self.tau_ms)
         return torch.where(B_new > self.thresh_percept, B_new, torch.zeros_like(B_new))
 

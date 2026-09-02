@@ -36,7 +36,9 @@ def batch_metrics(pred: torch.Tensor, target: torch.Tensor) -> dict[str, float]:
     return {
         "mse": mse(pred, target),
         "max_abs": max_abs(pred, target),
-        "ssim": ssim(pred[0], target[0]) if pred.shape[0] == 1 else ssim(pred.mean(0), target.mean(0)),
+        "ssim": ssim(pred[0], target[0])
+        if pred.shape[0] == 1
+        else ssim(pred.mean(0), target.mean(0)),
     }
 
 

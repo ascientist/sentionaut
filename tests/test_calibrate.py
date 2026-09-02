@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import numpy as np
-
 from sentionaut.calibrate import calibrate_subject
 from sentionaut.core.config import Config
 

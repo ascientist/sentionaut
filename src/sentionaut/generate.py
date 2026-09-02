@@ -194,9 +194,7 @@ def generate_world_dataset(
                 state = wm.initial_state(device)
                 for step in range(steps_per_ep):
                     silent = step >= sequence_length
-                    action, rec = sample_action(
-                        cfg, n_e, rng, ranges, device, silent=silent
-                    )
+                    action, rec = sample_action(cfg, n_e, rng, ranges, device, silent=silent)
                     s_prev = state.image.detach()
                     state = wm.step(state, action)
                     frame = state.image.detach()
@@ -235,7 +233,9 @@ def _pair(ctx, param, value):
 )
 @click.option("--episodes", type=int, default=8, show_default=True)
 @click.option("--sequence-length", type=int, default=4, show_default=True)
-@click.option("--silent-tail", type=int, default=2, show_default=True, help="Zero-drive fade steps.")
+@click.option(
+    "--silent-tail", type=int, default=2, show_default=True, help="Zero-drive fade steps."
+)
 @click.option("--dt-ms", type=float, default=20.0, show_default=True)
 @click.option(
     "--xrange", nargs=2, type=float, callback=_pair, default=(-5.0, 5.0), show_default=True
