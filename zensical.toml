@@ -18,5 +18,6 @@ nav = [
     "models/dynaphos.md",
     "models/world-model.md",
   ] },
+  { "NeuroStim (control)" = "neurostim.md" },
   { "References" = "references.md" },
 ]

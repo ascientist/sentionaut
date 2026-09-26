@@ -58,6 +58,24 @@ percept = model.forward(Action(amp=amp,
 Dataset generation and the Streamlit demo use these bands; parity tests keep
 their own fixed values.
 
+## NeuroStim: closed-loop control toy
+
+`sentionaut.neurostim` is a small constrained POMDP for closed-loop
+neurostimulation. It has 3 latent neural dimensions, 4 electrodes with an
+unknown overlapping recruitment matrix (a new "patient" per episode),
+adaptation, optional delay, drift and partial observation, and charge and
+adaptation constraints. Baselines range from a bandit through online
+system identification and a privileged oracle to PPO and PPO-Lagrangian.
+
+```python
+from sentionaut.neurostim import make
+env = make("NeuroStim-v0")          # also NeuroStim-Easy-v0, NeuroStim-Hard-v0
+obs, info = env.reset(seed=0)
+obs, r, terminated, truncated, info = env.step(env.action_space.sample())
+```
+
+Tutorial: `make neurostim` (see [docs/neurostim.md](docs/neurostim.md)).
+
 ## Documentation
 
 Browse on GitHub: [docs/index.md](docs/index.md).
