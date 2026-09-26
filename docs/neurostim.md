@@ -77,6 +77,8 @@ not depend on it. A `gymnasium.Env` wrapper is a few lines if you need one.
 | `online sysID` | probe, then RLS-with-forgetting estimate of `(A, B)`, then certainty-equivalent control | obs + `target_obs` |
 | `oracle greedy *` | one-step optimal drive, given true `x, h, A, B_t` and actions in flight; enforces both constraints | latent state |
 | `PPO` / `PPO-Lagrangian` | MLP on a `(o, a_prev)` history window; the Lagrangian version learns a multiplier on the violation budget | obs history |
+| `DAgger` (supervised, no RL) | same history MLP, trained by MSE regression onto the oracle's action at every state it visits; the dataset is aggregated over iterations | obs history (the oracle is used only as a training label) |
+| `DAgger + calibration` | as above, plus a fixed 8-step probe sweep (one ±0.5 pulse per electrode) at episode start; the responses stay in the input | obs history + probe record |
 
 `oracle greedy` is **not** an upper bound. It is myopic about adaptation: it
 drives the best-aligned electrodes into `h_max` and then loses the target
@@ -85,8 +87,8 @@ drives the best-aligned electrodes into `h_max` and then loses the target
 ## Tutorial
 
 ```bash
-uv run python examples/neurostim_tutorial.py            # ~6 min on 1 CPU core
-uv run python examples/neurostim_tutorial.py --quick    # ~20 s smoke run
+uv run python examples/neurostim_tutorial.py            # ~15 min on 1 CPU core
+uv run python examples/neurostim_tutorial.py --quick    # ~30 s smoke run
 ```
 
 **1. Probe one patient open loop.** Each electrode moves all three latents,
@@ -112,6 +114,30 @@ usable controller. So the bottleneck is **identifying the patient**, not
 controlling one.
 
 ![ppo](assets/neurostim/03_ppo_learning.png)
+
+**4. Supervised imitation (no RL).** `sentionaut.neurostim.imitation` trains
+the same history-MLP as PPO, but by regression. The privileged oracle labels
+every state the student visits, which turns the control problem into
+supervised learning with a dense per-step target. Iteration 0 is plain
+behaviour cloning: on random patients it is worse than no stimulation,
+because the student drifts into states the teacher never visited (covariate
+shift). DAgger's aggregated relabelling fixes that.
+
+- **Fixed patient:** the student matches the oracle (−22.7 vs −22.8, 0 %
+  violations). It beats PPO-Lagrangian (−44) with about 60 k labelled steps and
+  no reward shaping.
+- **Random patients:** −298. That is better than PPO (−519), but the teacher
+  never excites the system, so the history rarely shows how this patient's
+  `B` responds.
+- **Random patients + calibration sweep:** −169. It is about as good as PPO
+  given the true `B` (−157), with ~1 % violations. It still trails RLS
+  system ID (−88), whose linear-model prior is exactly right for this
+  environment.
+
+Imitation cannot beat its teacher. Here the teacher is myopic, so the
+student's ceiling is the oracle's −38.
+
+![dagger](assets/neurostim/04_dagger.png)
 
 ### Results
 
@@ -146,6 +172,9 @@ the fraction of steps that break a constraint. Charge is `Σ|a|` per step.
 | v0, fixed B | PPO-Lagrangian (fixed patient) | -44.3 ± 0.5 | 0.227 | 0.000 | 1.07 |
 | NeuroStim-v0 | PPO (random patients) | -518.9 ± 65.3 | 2.270 | 0.850 | 2.64 |
 | NeuroStim-v0 | PPO + true B (random patients) * | -157.0 ± 16.2 | 0.747 | 0.532 | 1.80 |
+| v0, fixed B | DAgger (fixed patient) | -22.7 ± 0.4 | 0.116 | 0.000 | 1.94 |
+| NeuroStim-v0 | DAgger (random patients) | -298.4 ± 12.9 | 1.497 | 0.003 | 0.88 |
+| NeuroStim-v0 | DAgger + calibration (random patients) | -168.9 ± 26.2 | 0.832 | 0.016 | 1.24 |
 
 ## Design notes and caveats
 
@@ -167,6 +196,13 @@ the fraction of steps that break a constraint. Charge is `Σ|a|` per step.
   `p(B)`. A personalised one identifies the patient online. The comparison
   between them is the scientific core. The privileged-`B` PPO run bounds what
   identification could buy. It is a diagnostic, not a method.
+- **Identification is the bottleneck, whatever the learner.** PPO, DAgger
+  and DAgger + calibration only differ in how the student gets information
+  about `B`. A designed probe helps a supervised learner more than any amount
+  of reward does. Natural supervised follow-ups: regress `B̂, ĥ` from the
+  probe record with an amortised identification network and hand them to the
+  model-based controller; or learn a dynamics model and plan through it with
+  MPC.
 - **PPO here is a baseline, not a tuned agent.** A recurrent or
   meta-RL policy (RL², a context encoder), model-based RL, or dual control
   are the natural next steps.

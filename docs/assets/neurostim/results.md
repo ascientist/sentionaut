@@ -25,3 +25,6 @@
 | v0, fixed B | PPO-Lagrangian (fixed patient) | -44.3 ± 0.5 | 0.227 | 0.000 | 1.07 |
 | NeuroStim-v0 | PPO (random patients) | -518.9 ± 65.3 | 2.270 | 0.850 | 2.64 |
 | NeuroStim-v0 | PPO + true B (random patients) * | -157.0 ± 16.2 | 0.747 | 0.532 | 1.80 |
+| v0, fixed B | DAgger (fixed patient) | -22.7 ± 0.4 | 0.116 | 0.000 | 1.94 |
+| NeuroStim-v0 | DAgger (random patients) | -298.4 ± 12.9 | 1.497 | 0.003 | 0.88 |
+| NeuroStim-v0 | DAgger + calibration (random patients) | -168.9 ± 26.2 | 0.832 | 0.016 | 1.24 |

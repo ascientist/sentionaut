@@ -35,12 +35,13 @@ from sentionaut.neurostim.baselines import (  # noqa: E402
     evaluate,
     rollout,
 )
+from sentionaut.neurostim.imitation import DAggerConfig, train_dagger  # noqa: E402
 from sentionaut.neurostim.ppo import PPOConfig, train_ppo  # noqa: E402
 
 parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
 parser.add_argument("--outdir", type=Path, default=Path("docs/assets/neurostim"))
 parser.add_argument("--episodes", type=int, default=30, help="held-out patients per eval")
-parser.add_argument("--quick", action="store_true", help="tiny PPO budgets (smoke run)")
+parser.add_argument("--quick", action="store_true", help="tiny training budgets (smoke run)")
 args, _ = parser.parse_known_args()
 args.outdir.mkdir(parents=True, exist_ok=True)
 torch.set_num_threads(1)
@@ -188,7 +189,64 @@ for ax in axes:
 axes[1].legend(fontsize=8)
 save(fig, "03_ppo_learning.png")
 
-# %% [5] Results table --------------------------------------------------
+# %% [5] Supervised imitation (DAgger), no RL ----------------------------
+# The student sees the same (o, a_prev) history as PPO. It regresses the
+# privileged oracle's action at every step it visits: a dense supervised
+# target instead of a scalar return.
+# (a) fixed patient: can plain regression recover the oracle?
+# (b) random patients: can it identify each patient implicitly?
+# (c) random patients plus a fixed 8-step calibration sweep (one +-pulse per
+#     electrode) whose responses stay in the input: supervised inference from
+#     a designed experiment.
+print("\n[5] Supervised imitation (DAgger from the oracle)")
+iters = 2 if args.quick else 8
+dagger_runs = {
+    "DAgger (fixed patient)": (dict(randomize_B=False), DAggerConfig(iterations=iters)),
+    "DAgger (random patients)": ({}, DAggerConfig(iterations=iters, episodes_per_iter=120)),
+    "DAgger + calibration (random patients)": (
+        {},
+        DAggerConfig(iterations=iters, episodes_per_iter=120, calibration=True),
+    ),
+}
+if args.quick:
+    for _, dcfg in dagger_runs.values():
+        dcfg.episodes_per_iter, dcfg.epochs = 4, 2
+dagger_logs = {}
+for label, (kw, dcfg) in dagger_runs.items():
+    print(f"  training {label}")
+    policy, dagger_logs[label] = train_dagger(lambda kw=kw: make("NeuroStim-v0", **kw), dcfg)
+    m = evaluate(make("NeuroStim-v0", **kw), policy, episodes=args.episodes)
+    rows.append(("v0, fixed B" if kw else "NeuroStim-v0", label, m))
+    print(
+        f"    eval: return {m['return']:.1f}  ss_err {m['ss_error']:.3f}  viol {m['violation_rate']:.3f}"
+    )
+
+ref = {(setting, name): m["return"] for setting, name, m in rows}
+fig, axes = plt.subplots(1, 2, figsize=(11, 3.8), sharey=True)
+panels = [
+    ("fixed patient", "v0, fixed B", ["DAgger (fixed patient)"], "PPO-Lagrangian (fixed patient)"),
+    (
+        "random patients",
+        "NeuroStim-v0",
+        ["DAgger (random patients)", "DAgger + calibration (random patients)"],
+        "PPO (random patients)",
+    ),
+]
+for ax, (title, setting, labels, ppo_label) in zip(axes, panels):
+    for label in labels:
+        log = dagger_logs[label]
+        ax.plot([e["iteration"] for e in log], [e["return"] for e in log], "o-", label=label)
+    for name, style in [("oracle greedy *", "k--"), ("online sysID", "k:"), (ppo_label, "r-.")]:
+        if (setting, name) in ref:
+            ax.axhline(ref[(setting, name)], ls=style[1:], color=style[0], lw=1, label=name)
+    ax.axhline(ref.get((setting, "zero"), -406.0), color="0.6", lw=1, label="no stimulation")
+    ax.set_title(title)
+    ax.set_xlabel("DAgger iteration (0 = behaviour cloning)")
+    ax.legend(fontsize=7)
+axes[0].set_ylabel("validation return")
+save(fig, "04_dagger.png")
+
+# %% [6] Results table --------------------------------------------------
 lines = [
     "| setting | policy | return | steady-state error | violation rate | charge |",
     "| --- | --- | ---: | ---: | ---: | ---: |",

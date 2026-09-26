@@ -116,3 +116,21 @@ def test_ppo_smoke():
     traj = rollout(make("NeuroStim-v0", horizon=16), policy, seed=0)
     assert traj.actions.shape == (16, 4)
     assert log and "lambda" in log[-1]
+
+
+def test_dagger_smoke_and_calibration_sweep():
+    torch = pytest.importorskip("torch")
+    torch.set_num_threads(1)
+    from sentionaut.neurostim.imitation import DAggerConfig, probe_sequence, train_dagger
+
+    cfg = DAggerConfig(iterations=2, episodes_per_iter=2, epochs=1, calibration=True)
+    policy, log = train_dagger(lambda: make("NeuroStim-v0", horizon=30), cfg, verbose=False)
+    assert [e["iteration"] for e in log] == [0, 1]
+    assert log[0]["beta"] == 1.0 and log[1]["beta"] == 0.5
+
+    traj = rollout(make("NeuroStim-v0", horizon=30), policy, seed=0)
+    probes = probe_sequence(4, cfg.probe)
+    np.testing.assert_allclose(traj.actions[: len(probes)], probes)  # fixed sweep first
+    assert np.all(np.abs(traj.actions).sum(1) <= 2.0 + 1e-9)  # charge shield
+    # The probe responses are frozen into the student's input once the sweep ends.
+    assert np.count_nonzero(policy.calib) > 0

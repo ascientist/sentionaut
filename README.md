@@ -65,7 +65,8 @@ neurostimulation. It has 3 latent neural dimensions, 4 electrodes with an
 unknown overlapping recruitment matrix (a new "patient" per episode),
 adaptation, optional delay, drift and partial observation, and charge and
 adaptation constraints. Baselines range from a bandit through online
-system identification and a privileged oracle to PPO and PPO-Lagrangian.
+system identification and a privileged oracle to PPO, PPO-Lagrangian and
+supervised DAgger imitation of the oracle.
 
 ```python
 from sentionaut.neurostim import make

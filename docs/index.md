@@ -40,7 +40,7 @@ learned world model) are classified by **modality** — see
 [NeuroStim](neurostim.md) is a toy constrained POMDP for closed-loop
 neurostimulation: 3 latents, 4 overlapping electrodes, an unknown per-patient
 recruitment matrix, adaptation and safety constraints, plus baselines from
-bandit to PPO-Lagrangian.
+bandit to PPO-Lagrangian and supervised DAgger imitation.
 
 All current models map neural stimulation to a predicted visual percept
 (`brain2vision`). Browse the [catalog](models/index.md) for details and
