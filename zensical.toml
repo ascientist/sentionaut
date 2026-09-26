@@ -18,6 +18,9 @@ nav = [
     "models/dynaphos.md",
     "models/world-model.md",
   ] },
-  { "NeuroStim (control)" = "neurostim.md" },
+  { "NeuroStim (control)" = [
+    "neurostim.md",
+    "neurostim-percept.md",
+  ] },
   { "References" = "references.md" },
 ]

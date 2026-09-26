@@ -77,6 +77,12 @@ obs, r, terminated, truncated, info = env.step(env.action_space.sample())
 
 Tutorial: `make neurostim` (see [docs/neurostim.md](docs/neurostim.md)).
 
+`make neurostim-percept` runs the image version. MNIST digits are the
+targets. The neural state is the code space of a frozen autoencoder, and a
+stimulation policy is learned by backpropagating a reconstruction loss
+through a learned world model, for fixed and random patients (see
+[docs/neurostim-percept.md](docs/neurostim-percept.md)).
+
 ## Documentation
 
 Browse on GitHub: [docs/index.md](docs/index.md).

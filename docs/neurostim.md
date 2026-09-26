@@ -176,6 +176,13 @@ the fraction of steps that break a constraint. Charge is `Σ|a|` per step.
 | NeuroStim-v0 | DAgger (random patients) | -298.4 ± 12.9 | 1.497 | 0.003 | 0.88 |
 | NeuroStim-v0 | DAgger + calibration (random patients) | -168.9 ± 26.2 | 0.832 | 0.016 | 1.24 |
 
+## Image targets
+
+[NeuroStim-Percept](neurostim-percept.md) lifts this model to a 16-D neural
+state read out as MNIST percepts. It learns stimulation by backpropagating a
+reconstruction loss through a learned world model, for fixed and random
+patients.
+
 ## Design notes and caveats
 
 - **Bandit boundary.** Set `A = 0` and turn off adaptation. Then `x_{t+1}`
