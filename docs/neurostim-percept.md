@@ -9,7 +9,8 @@ backpropagating a **reconstruction loss** through a **learned world model**,
 never through the brain itself. There is no RL.
 
 Source: `src/sentionaut/neurostim/percept.py` · Tutorial:
-`examples/neurostim_percept_tutorial.py`
+`examples/neurostim_percept_tutorial.py` · Maths: [canonical
+formulation](neurostim-formulation.md) (this tutorial is rung L5)
 
 ## Pipeline
 

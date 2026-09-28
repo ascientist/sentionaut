@@ -77,6 +77,11 @@ obs, r, terminated, truncated, info = env.step(env.action_space.sample())
 
 Tutorial: `make neurostim` (see [docs/neurostim.md](docs/neurostim.md)).
 
+`make neurostim-canonical` runs the canonical formulation. It strips the
+problem down to adaptive tracking of random, drifting linear dynamical
+systems, with exactly solvable baselines (see
+[docs/neurostim-formulation.md](docs/neurostim-formulation.md)).
+
 `make neurostim-percept` runs the image version. MNIST digits are the
 targets. The neural state is the code space of a frozen autoencoder, and a
 stimulation policy is learned by backpropagating a reconstruction loss
