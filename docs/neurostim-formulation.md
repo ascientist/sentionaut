@@ -308,6 +308,9 @@ uv run python examples/neurostim_canonical_tutorial.py           # ~10 min
 uv run python examples/neurostim_canonical_tutorial.py --quick   # ~1 min
 ```
 
+A full baseline suite on regimes A–D, from LQG and H∞ to SAC, TD-MPC2,
+JEPA and diffusion policies, is on [Baselines](neurostim-baselines.md).
+
 ## 9. Mapping to the code
 
 | Symbol | `canonical.py` | [NeuroStim](neurostim.md) (`env.py`) | [NeuroStim-Percept](neurostim-percept.md) (`percept.py`) |

@@ -8,7 +8,7 @@ SEQ_LEN ?= 16
 MODEL ?= axonmap
 OUTDIR ?= artifacts
 
-.PHONY: setup dataset world demo animate train ablate neurostim neurostim-percept neurostim-canonical test lint format docs docs-serve clean
+.PHONY: setup dataset world demo animate train ablate neurostim neurostim-percept neurostim-canonical neurostim-baselines test lint format docs docs-serve clean
 
 setup:
 	$(UV) sync $(ENV_FLAGS)
@@ -39,6 +39,9 @@ neurostim-percept:
 
 neurostim-canonical:
 	$(UV) run python examples/neurostim_canonical_tutorial.py
+
+neurostim-baselines:
+	$(UV) run python examples/neurostim_baselines_tutorial.py
 
 test:
 	$(UV) run pytest -m "not slow"

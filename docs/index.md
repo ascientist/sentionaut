@@ -41,6 +41,8 @@ The [canonical formulation](neurostim-formulation.md) states the problem
 precisely: adaptive tracking over a population of random, slowly drifting,
 partially observed dynamical systems. It covers the patient, drift and
 fast neural state, and the image and patient generalisation axes.
+[Baselines](neurostim-baselines.md) runs 14 methods, from LQG to diffusion
+policies, on four regimes that each favour a different family.
 [NeuroStim](neurostim.md) is a toy constrained POMDP for closed-loop
 neurostimulation: 3 latents, 4 overlapping electrodes, an unknown per-patient
 recruitment matrix, adaptation and safety constraints, plus baselines from

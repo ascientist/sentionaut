@@ -20,6 +20,7 @@ nav = [
   ] },
   { "NeuroStim (control)" = [
     "neurostim-formulation.md",
+    "neurostim-baselines.md",
     "neurostim.md",
     "neurostim-percept.md",
   ] },

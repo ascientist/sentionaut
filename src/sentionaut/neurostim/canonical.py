@@ -51,6 +51,9 @@ class PopulationConfig:
     obs_noise: float = 0.05
     observe: str = "full"  # "full": o = x + v ; "percept": o = D x + v (partial)
     lam_u: float = 0.1  # control penalty; smaller saturates u_max and chatters
+    # Nonlinearity (regimes C, D). x' = A s(x) + B_t g(u) + w
+    recruit: str = "linear"  # "linear": g(u)=u | "tanh": saturating | "even": u^2 - 1/4
+    saturation: float = 0.0  # s(x) = sat*tanh(x/sat): firing-rate saturation; 0 = linear
     u_max: float = 2.0
     n_targets: int = 100  # the common "image" set, shared by all patients
     target_std: float = 0.5
@@ -61,6 +64,50 @@ class PopulationConfig:
 class Patient:
     A: np.ndarray
     B: np.ndarray
+
+
+def recruit(cfg: PopulationConfig, u):
+    """Electrode recruitment ``g(u)``, elementwise.
+
+    ``tanh`` saturates (smooth nonlinearity). ``even`` is polarity-insensitive
+    (``g(u) = g(-u)``), as for charge-balanced biphasic pulses, with a tonic
+    offset (-1/4) so drive can be negative. Every electrode then has two equally good
+    settings ``±u``: ``2^m`` optimal stimulation patterns, a genuinely
+    multimodal control problem.
+    """
+    if cfg.recruit == "linear":
+        return u
+    if cfg.recruit == "tanh":
+        return np.tanh(u)
+    if cfg.recruit == "even":
+        return u**2 - 0.25
+    raise ValueError(cfg.recruit)
+
+
+def recruit_grad(cfg: PopulationConfig, u):
+    if cfg.recruit == "linear":
+        return np.ones_like(u)
+    if cfg.recruit == "tanh":
+        return 1 - np.tanh(u) ** 2
+    return 2 * u
+
+
+def rate(cfg: PopulationConfig, x):
+    """Firing-rate saturation ``s(x) = sat·tanh(x / sat)`` (identity when ``sat = 0``)."""
+    return cfg.saturation * np.tanh(x / cfg.saturation) if cfg.saturation > 0 else x
+
+
+def step_mean(cfg: PopulationConfig, A, B_t, x, u):
+    """Noise-free ``f(x, u) = A s(x) + B_t g(u)``; broadcasts over leading batch dims."""
+    return rate(cfg, x) @ A.T + recruit(cfg, u) @ B_t.T
+
+
+def step_jacobians(cfg: PopulationConfig, A, B_t, x, u):
+    """``(∂f/∂x, ∂f/∂u)`` at a single ``(x, u)``."""
+    ds = 1 - np.tanh(x / cfg.saturation) ** 2 if cfg.saturation > 0 else np.ones_like(x)
+    fx = A * ds[None, :]
+    fu = B_t * recruit_grad(cfg, u)[None, :]
+    return fx, fu
 
 
 class Population:
@@ -300,14 +347,15 @@ def run_episode(pop: Population, patient: Patient, ctrl: Controller, z_star, rng
     c = pop.cfg
     x = np.zeros(c.n)
     phi = np.zeros_like(patient.B)
-    info = {"A": patient.A, "B_t": patient.B + phi}
+    info = {"A": patient.A, "B_t": patient.B + phi, "x": x}
     ctrl.reset(pop, z_star, info)
     err, cost = np.zeros(c.horizon), np.zeros(c.horizon)
     for t in range(c.horizon):
         o = pop.C @ x + c.obs_noise * rng.normal(size=pop.C.shape[0])
         info["B_t"] = patient.B + phi
+        info["x"] = x  # privileged: only oracle controllers may read it
         u = ctrl.act(o, info)
-        x = patient.A @ x + (patient.B + phi) @ u + c.process_noise * rng.normal(size=c.n)
+        x = step_mean(c, patient.A, patient.B + phi, x, u) + c.process_noise * rng.normal(size=c.n)
         if c.drift > 0:
             phi = c.drift_decay * phi + c.drift * rng.normal(size=phi.shape)
         e = pop.D @ x - z_star
@@ -358,3 +406,20 @@ LEVELS: dict[str, PopulationConfig] = {
 
 def level(name: str, **overrides) -> PopulationConfig:
     return replace(LEVELS[name], **overrides)
+
+
+# The "ARIMA test": each regime is where a class of methods should win or tie.
+REGIMES: dict[str, PopulationConfig] = {
+    # A: LTI + Gaussian, one known patient. LQG is optimal.
+    "A": PopulationConfig(sigma_A=0.0, sigma_B=0.0, horizon=150),
+    # B: unknown LTI patient. Online identification should be hard to beat.
+    "B": PopulationConfig(horizon=150),
+    # C: smooth nonlinear (saturating recruitment and firing rates) + drift.
+    "C": PopulationConfig(recruit="tanh", saturation=1.0, drift=0.01, horizon=150),
+    # D: partial observation + heterogeneity + multimodal (polarity-insensitive) recruitment.
+    "D": PopulationConfig(recruit="even", saturation=1.0, observe="percept", horizon=150),
+}
+
+
+def regime(name: str, **overrides) -> PopulationConfig:
+    return replace(REGIMES[name], **overrides)

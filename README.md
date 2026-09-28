@@ -82,6 +82,11 @@ problem down to adaptive tracking of random, drifting linear dynamical
 systems, with exactly solvable baselines (see
 [docs/neurostim-formulation.md](docs/neurostim-formulation.md)).
 
+`make neurostim-baselines` runs the baseline suite on four regimes (the
+"ARIMA test"): oracle LQG, iLQR-NMPC, MPPI, nominal LQG, PI, H∞, adaptive
+MPC, DeePC, Koopman-MPC, SAC, TD-MPC2-style, JEPA-style + MPPI, diffusion
+policy and BC (see [docs/neurostim-baselines.md](docs/neurostim-baselines.md)).
+
 `make neurostim-percept` runs the image version. MNIST digits are the
 targets. The neural state is the code space of a frozen autoencoder, and a
 stimulation policy is learned by backpropagating a reconstruction loss
