@@ -37,6 +37,10 @@ learned world model) are classified by **modality** — see
 
 ## Closed-loop control
 
+The [canonical formulation](neurostim-formulation.md) states the problem
+precisely: adaptive tracking over a population of random, slowly drifting,
+partially observed dynamical systems. It covers the patient, drift and
+fast neural state, and the image and patient generalisation axes.
 [NeuroStim](neurostim.md) is a toy constrained POMDP for closed-loop
 neurostimulation: 3 latents, 4 overlapping electrodes, an unknown per-patient
 recruitment matrix, adaptation and safety constraints, plus baselines from

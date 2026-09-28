@@ -8,7 +8,8 @@ stimulation control an RL problem and not a bandit: stimulation changes a
 *persistent* neural state, the electrode→state map is unknown and overlapping,
 repeated stimulation adapts, and safety is a constraint, not a penalty.
 
-Source: `src/sentionaut/neurostim/` · Tutorial: `examples/neurostim_tutorial.py`
+Source: `src/sentionaut/neurostim/` · Tutorial: `examples/neurostim_tutorial.py` ·
+Maths: [canonical formulation](neurostim-formulation.md) (this environment is rung L4)
 
 ## Model
 
