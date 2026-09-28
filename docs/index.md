@@ -35,6 +35,16 @@ learned world model) are classified by **modality** — see
 | [Dynaphos](models/dynaphos.md) | `brain2vision` | cortical | van der Grinten et al. 2024 |
 | [World model](models/world-model.md) | `brain2vision` | multi | learned (no paper) |
 
+## Closed-loop control
+
+[NeuroStim](neurostim.md) is a toy constrained POMDP for closed-loop
+neurostimulation: 3 latents, 4 overlapping electrodes, an unknown per-patient
+recruitment matrix, adaptation and safety constraints, plus baselines from
+bandit to PPO-Lagrangian and supervised DAgger imitation.
+[NeuroStim-Percept](neurostim-percept.md) turns the target into an MNIST
+image. It learns stimulation through a learned world model with a
+reconstruction loss, with no RL.
+
 All current models map neural stimulation to a predicted visual percept
 (`brain2vision`). Browse the [catalog](models/index.md) for details and
 citations.

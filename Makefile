@@ -8,7 +8,7 @@ SEQ_LEN ?= 16
 MODEL ?= axonmap
 OUTDIR ?= artifacts
 
-.PHONY: setup dataset world demo animate train ablate test lint format docs docs-serve clean
+.PHONY: setup dataset world demo animate train ablate neurostim neurostim-percept test lint format docs docs-serve clean
 
 setup:
 	$(UV) sync $(ENV_FLAGS)
@@ -30,6 +30,12 @@ train:
 
 ablate:
 	$(UV) run sentionaut-train ablate --dataset $(WORLD_DATASET) --config configs/ablation.yaml
+
+neurostim:
+	$(UV) run python examples/neurostim_tutorial.py
+
+neurostim-percept:
+	$(UV) run python examples/neurostim_percept_tutorial.py
 
 test:
 	$(UV) run pytest -m "not slow"

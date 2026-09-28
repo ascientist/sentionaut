@@ -58,6 +58,31 @@ percept = model.forward(Action(amp=amp,
 Dataset generation and the Streamlit demo use these bands; parity tests keep
 their own fixed values.
 
+## NeuroStim: closed-loop control toy
+
+`sentionaut.neurostim` is a small constrained POMDP for closed-loop
+neurostimulation. It has 3 latent neural dimensions, 4 electrodes with an
+unknown overlapping recruitment matrix (a new "patient" per episode),
+adaptation, optional delay, drift and partial observation, and charge and
+adaptation constraints. Baselines range from a bandit through online
+system identification and a privileged oracle to PPO, PPO-Lagrangian and
+supervised DAgger imitation of the oracle.
+
+```python
+from sentionaut.neurostim import make
+env = make("NeuroStim-v0")          # also NeuroStim-Easy-v0, NeuroStim-Hard-v0
+obs, info = env.reset(seed=0)
+obs, r, terminated, truncated, info = env.step(env.action_space.sample())
+```
+
+Tutorial: `make neurostim` (see [docs/neurostim.md](docs/neurostim.md)).
+
+`make neurostim-percept` runs the image version. MNIST digits are the
+targets. The neural state is the code space of a frozen autoencoder, and a
+stimulation policy is learned by backpropagating a reconstruction loss
+through a learned world model, for fixed and random patients (see
+[docs/neurostim-percept.md](docs/neurostim-percept.md)).
+
 ## Documentation
 
 Browse on GitHub: [docs/index.md](docs/index.md).
@@ -67,11 +92,10 @@ make docs         # build → site/
 make docs-serve   # preview on localhost:8000
 ```
 
-A Zensical site is also pushed to the `gh-pages` branch. GitHub Pages is not
-enabled on this private repo, so
+Every push to `main` rebuilds the Zensical site into the `gh-pages` branch.
+GitHub Pages serves it at
 [ascientist.github.io/sentionaut](https://ascientist.github.io/sentionaut/)
-404s until an admin sets **Settings → Pages → Deploy from a branch →
-`gh-pages` / root**. Private Pages also need GitHub Pro.
+(Settings → Pages → Deploy from a branch → `gh-pages` / root).
 
 ## Setup
 
