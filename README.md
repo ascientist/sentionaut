@@ -92,11 +92,10 @@ make docs         # build → site/
 make docs-serve   # preview on localhost:8000
 ```
 
-A Zensical site is also pushed to the `gh-pages` branch. GitHub Pages is not
-enabled on this private repo, so
+Every push to `main` rebuilds the Zensical site into the `gh-pages` branch.
+GitHub Pages serves it at
 [ascientist.github.io/sentionaut](https://ascientist.github.io/sentionaut/)
-404s until an admin sets **Settings → Pages → Deploy from a branch →
-`gh-pages` / root**. Private Pages also need GitHub Pro.
+(Settings → Pages → Deploy from a branch → `gh-pages` / root).
 
 ## Setup
 
