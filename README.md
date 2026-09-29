@@ -136,6 +136,15 @@ MPS: the Axon Map sweeps `rho`/`axlambda` and translates the array; the cortical
 Scoreboard and Dynaphos sweep the implant to expose cortical-magnification growth
 (Dynaphos also shows temporal charge buildup). Outputs go to `artifacts/`.
 
+```bash
+make demos
+```
+
+Renders the documentation demos: the implant stays fixed and one zone of
+neighbouring electrodes receives a stimulation sequence (single electrodes,
+pairs, an amplitude ramp, then a pulse train). The GIFs are written to
+`docs/assets/demos/` and shown on each model page (`docs/models/*.md`).
+
 ## Interactive demo
 
 ```bash

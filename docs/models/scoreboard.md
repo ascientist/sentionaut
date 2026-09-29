@@ -20,6 +20,18 @@ Places a Gaussian blob at each active cortical electrode's visual-field
 location (the "scoreboard" baseline: no axon streaks). Cortical magnification
 makes peripheral phosphenes larger. `Action.amp` is in µA (typically 50–300).
 
+## Demo
+
+![Scoreboard stimulation sequence on a fixed Orion array](../assets/demos/scoreboard_sequence.gif)
+
+The Orion array stays in place while four neighbouring electrodes (red)
+receive a stimulation sequence: each electrode alone, then pairs with the
+centre electrode, then all four on an amplitude ramp (100, 200, 300 µA), and
+finally a repeated pulse train. Electrodes being stimulated are circled in
+yellow. The percept panel is zoomed onto the zone's visual-field location,
+because near the fovea cortical magnification makes each phosphene a fraction
+of a degree wide. Regenerate with `make demos`.
+
 ## Usage
 
 ```python

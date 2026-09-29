@@ -21,6 +21,18 @@ bundles (streaks) and scaling brightness, size, and streak length from biphasic
 pulse amplitude, frequency, and phase duration. `Action.amp` is in units of
 threshold (typically 0.5–3.0).
 
+## Demo
+
+![Axon map stimulation sequence on a fixed Argus II array](../assets/demos/axonmap_sequence.gif)
+
+The Argus II array stays in place while four neighbouring electrodes (red)
+receive a stimulation sequence: each electrode alone, then pairs with the
+centre electrode, then all four on an amplitude ramp (1, 2, 3 × threshold),
+and finally a repeated pulse train. Electrodes being stimulated are circled in
+yellow. Each pulse is followed by a rest so the fading of the percept is
+visible, and the streaks follow the underlying axon bundles.
+Regenerate with `make demos`.
+
 ## Usage
 
 ```python
