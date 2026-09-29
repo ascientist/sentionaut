@@ -110,7 +110,7 @@ included.
 | Koopman-MPC | learned dynamics | 0.043 (5% fail) | 0.029 (10% fail) | 0.027 | 98.550 (95% fail) |
 | SAC | model-free RL | 0.073 | 0.109 (5% fail) | 0.050 | 2.720 (10% fail) |
 | TD-MPC2-style | model-based RL | 0.050 | 0.128 (10% fail) | 0.070 | 0.237 (5% fail) |
-| JEPA-style + MPPI | representation | 3.597 (100% fail) | 4.591 (100% fail) | 0.637 (55% fail) | 1.571 (30% fail) |
+| JEPA-style + MPPI † | representation | 3.597 (100% fail) | 4.591 (100% fail) | 0.637 (55% fail) | 1.571 (30% fail) |
 | Diffusion policy | generative | 0.055 | 0.473 (40% fail) | 0.234 (20% fail) | 0.942 |
 | BC (MSE) | imitation (control) | 0.034 | 0.226 (35% fail) | 0.213 (15% fail) | 0.949 |
 
@@ -121,7 +121,10 @@ included.
 **A. LTI + Gaussian: LQG should win or tie. ✔**
 - **Oracle and nominal LQG tie** at 0.0148. With one known patient they are the same controller, and theory says it is optimal. H∞ (1.1×) and iLQR (1.1×) are indistinguishable from it.
 - **Every learned method is 2.3–4.9× worse** (BC 0.034, TD-MPC2-style 0.050, diffusion 0.055, SAC 0.073). By the ARIMA criterion ("a learned method that cannot recover LQG in the LQG regime has a problem") they fail mildly: they have to rediscover from samples what a Riccati equation gives exactly.
-- **JEPA fails outright** (see section 5).
+- **JEPA fails outright** (see section 5). † This row predates the fixed
+  read-out and regularisation. With the MLP probe, regime A improves to a
+  median of 1.2, which still fails because of the planner. It will be
+  re-run on the cluster.
 
 **B. Unknown linear patient: online identification should be hard to beat. ✔**
 - **Adaptive MPC is the best method without privileged knowledge** (0.025, 2.5× the ceiling), with Koopman close behind (0.029).
@@ -204,11 +207,27 @@ property of the method, not a bug:
   action. The JEPA loss is then satisfied without modelling the brain at
   all. The fix is to encode observations only and feed actions to the
   predictor.
-- **JEPA precision.** Even without the shortcut, a purely predictive latent
-  keeps the percept only coarsely. A linear probe from the latent reaches an
-  error of 0.22 on a percept of variance 2.4, where the raw input history
-  reaches 0.005, the noise floor. Nothing in the objective asks for
-  precision, and set-point tracking needs it.
+- **JEPA does not collapse; its read-out and its planner were the problem.**
+  - *Regularisation.* VICReg (25 / 25 / 1) is now applied to every embedding
+    the loss touches: the encoder output at each timestep, the prediction
+    targets included, and every predictor output.
+  - *No collapse, with or without it.* Per-dimension std stays at about 1.0
+    and the effective rank at 15.6–15.8 out of 16, both before and after the
+    change (`examples/neurostim_jepa_diagnostics.py` logs both over training).
+  - *The information is there, nonlinearly.* A *linear* probe reads the
+    percept poorly (0.41 MSE against a variance of 2.4). An *MLP* probe on the
+    same latent reaches 0.010, as good as on the raw input (0.009). The
+    planner used the linear probe, so it optimised the wrong cost. It now
+    uses an MLP probe (held-out 0.006).
+  - *The predictor is sound.* It uses the actions (shuffling them makes
+    5-step predictions 40× worse) and beats "no change" at every horizon.
+  - *The remaining failure is planning, not representation.* The percept
+    covers only 3 of 6 latent dimensions. A planner with no terminal value
+    greedily drives the hidden modes (the zero dynamics) unstable. The same
+    latent planner fails **even when given the true model** (best 0.36, 17 %
+    failures), exactly as MPPI did before it got an LQR terminal cost.
+    TD-MPC avoids this with its learned Q. The next step for JEPA-MPC is a
+    terminal value on the frozen JEPA latent.
 - **TD-MPC entropy.** A fixed entropy weight (1e-3) was negligible against Q
   values around −10, and the policy prior collapsed early. Automatic tuning
   (as in SAC) halved its error. Latent planning helps only with a narrow
@@ -237,6 +256,14 @@ property of the method, not a bug:
 ```bash
 uv run python examples/neurostim_baselines_tutorial.py           # ~2 h on 4 CPU cores
 uv run python examples/neurostim_baselines_tutorial.py --quick   # ~5 min smoke run
+```
+
+**JEPA diagnostics on a cluster.** One task per (variant, regime) reports
+collapse (std, effective rank), information (linear and MLP probes, 5-step
+predictions) and control:
+
+```bash
+sbatch --array=0-31 scripts/slurm_neurostim_jepa.sh      # 8 variants x 4 regimes
 ```
 
 **Multiple seeds on a cluster.** The table above is one training seed, and

@@ -314,8 +314,15 @@ class LatentPlanner:
         elites=32,
         temp=0.5,
         init_std=0.5,
+        stationarity=0.0,
+        knots=None,
     ):
-        self.init_std = init_std
+        # knots: perturbations piecewise constant over this many blocks (as in MPPI*);
+        # sampling all H x m numbers independently is hopeless for long horizons.
+        self.knots = knots
+        # Terminal penalty w * ||z_H - z_{H-1}||^2: a held set-point is an equilibrium.
+        # A value-free substitute for a terminal cost when no Q function is learned.
+        self.init_std, self.stationarity = init_std, stationarity
         self.encode, self.model_step, self.terminal, self.prior = (
             encode,
             model_step,
@@ -340,9 +347,12 @@ class LatentPlanner:
         z0 = self.encode(feat)  # (1, latent)
         mean, std = self.mean.clone(), torch.full((self.H, self.m), self.init_std * self.u_max)
         for _ in range(self.iters):
-            U = (mean + std * torch.randn(self.samples, self.H, self.m)).clamp(
-                -self.u_max, self.u_max
-            )
+            if self.knots:
+                eps = torch.randn(self.samples, self.knots, self.m)
+                eps = eps.repeat_interleave(-(-self.H // self.knots), 1)[:, : self.H]
+            else:
+                eps = torch.randn(self.samples, self.H, self.m)
+            U = (mean + std * eps).clamp(-self.u_max, self.u_max)
             if self.prior is not None:
                 zp, Up = z0.expand(self.n_prior, -1), []
                 for _k in range(self.H):
@@ -352,9 +362,12 @@ class LatentPlanner:
                 U = torch.cat([U, torch.stack(Up, 1)], 0)
             z, G = z0.expand(U.shape[0], -1), torch.zeros(U.shape[0])
             for k in range(self.H):
+                z_prev = z
                 z, r = self.model_step(z, U[:, k])
                 G += r
             G += self.terminal(z, U[:, -1])
+            if self.stationarity:
+                G -= self.stationarity * ((z - z_prev) ** 2).sum(-1)
             top = G.topk(self.elites).indices
             w = torch.softmax((G[top] - G[top].max()) / (self.temp * (G[top].std() + 1e-6)), 0)
             mean = (w[:, None, None] * U[top]).sum(0)
@@ -664,6 +677,38 @@ def train_diffusion(cfg, demos, chunk=8, execute=4, steps=15000, n_diff=50, verb
 
 
 # ------------------------------------------------------------------ JEPA-style + MPPI
+def vicreg_terms(z, eps: float = 1e-4):
+    """VICReg regularisers on a batch of embeddings ``(B, L)``.
+
+    Variance: hinge keeping each dimension's std at >= 1 (prevents collapse to a
+    constant). Covariance: squared off-diagonal covariance / L (prevents
+    dimensional collapse, i.e. all dimensions encoding the same thing).
+    """
+    z = z - z.mean(0)
+    std = (z.var(0) + eps).sqrt()
+    cov = (z.T @ z) / (len(z) - 1)
+    off = cov - torch.diag(torch.diag(cov))
+    return F.relu(1 - std).mean(), (off**2).sum() / z.shape[1]
+
+
+@torch.no_grad()
+def collapse_stats(z):
+    """Collapse diagnostics of embeddings ``(B, L)``.
+
+    ``eff_rank`` is the exponential of the entropy of the normalised singular
+    values (Roy & Vetterli 2007): L for isotropic embeddings, 1 when every
+    dimension carries the same signal.
+    """
+    z = z - z.mean(0)
+    sv = torch.linalg.svdvals(z)
+    p = sv / sv.sum()
+    return {
+        "std_min": float(z.std(0).min()),
+        "std_mean": float(z.std(0).mean()),
+        "eff_rank": float(torch.exp(-(p * torch.log(p + 1e-12)).sum())),
+    }
+
+
 @dataclass
 class JEPAConfig:
     episodes: int = 1500
@@ -671,14 +716,32 @@ class JEPAConfig:
     latent: int = 16
     rollout: int = 5
     # None: stop-gradient on the online encoder (VICReg-style, as in PLDM). A float
-    # gives an EMA target encoder (I-JEPA style). Stop-gradient kept the percept
-    # best in a sweep (linear-probe MSE 0.22 vs 0.29-0.44 with EMA 0.99).
+    # gives an EMA target encoder (I-JEPA style).
     ema: float | None = None
+    # VICReg weights (Bardes et al. 2022 use 25 / 25 / 1). The regularisers are applied
+    # to EVERY embedding the loss touches: the encoder output at each of the
+    # rollout + 1 timesteps (the prediction targets included) and each predictor
+    # output. Regularising only the first encoding lets targets and predictions
+    # shrink, which is exactly how a predictive loss collapses.
+    pred_w: float = 25.0
+    var_w: float = 25.0
+    cov_w: float = 1.0
+    reg_predictions: bool = True
+    reg_all_encodings: bool = True  # False: only the first encoding (the old setup)
+    # Read-out of the percept from the frozen latent, used by the planner's cost.
+    # "mlp": the latent holds the percept nonlinearly (held-out MSE 0.010 with an MLP
+    # probe vs 0.41 with a linear one, regime A), so a linear read-out misleads MPPI.
+    probe: str = "mlp"
+    probe_steps: int = 3000
     plan_horizon: int = 10
+    plan_knots: int | None = None
+    plan_stationarity: float = 0.0
+    log_every: int = 1000
     seed: int = 0
 
 
-def train_jepa(cfg: PopulationConfig, jc: JEPAConfig | None = None, verbose=True):
+def train_jepa(cfg: PopulationConfig, jc: JEPAConfig | None = None, verbose=True, log=None):
+    """Train the JEPA-style model; ``log`` (a list) receives collapse diagnostics."""
     jc = jc or JEPAConfig()
     torch.manual_seed(jc.seed)
     sim, S, A, Obs = collect_random(cfg, jc.episodes, seed=30_000 + jc.seed)
@@ -697,21 +760,29 @@ def train_jepa(cfg: PopulationConfig, jc: JEPAConfig | None = None, verbose=True
     enc_t.load_state_dict(enc.state_dict())
     opt = torch.optim.Adam(list(enc.parameters()) + list(pred.parameters()), lr=3e-4)
     N, T1, _ = hist.shape
+    K = jc.rollout
     for step in range(jc.steps):
         e = torch.randint(0, N, (256,))
-        t0 = torch.randint(0, T1 - jc.rollout - 1, (256,))
-        s = enc(hist[e, t0])
-        loss = 0.0
-        for k in range(jc.rollout):
-            s = pred(torch.cat([s, A[e, t0 + k]], -1))
+        t0 = torch.randint(0, T1 - K - 1, (256,))
+        ts = t0[:, None] + torch.arange(K + 1)
+        Z = enc(hist[e[:, None], ts])  # (B, K+1, L): every encoding, with gradient
+        if jc.ema:
             with torch.no_grad():
-                tgt = (enc_t if jc.ema else enc)(hist[e, t0 + k + 1])
-            loss = loss + F.mse_loss(s, tgt)
-        z = enc(hist[e, t0])  # VICReg: keep every dimension alive, decorrelate them
-        std = z.std(0)
-        cov = torch.cov(z.T)
-        off = cov - torch.diag(torch.diag(cov))
-        loss = loss + F.relu(1 - std).mean() + 0.04 * (off**2).sum() / L
+                tgt = enc_t(hist[e[:, None], ts[:, 1:]])
+        else:
+            tgt = Z[:, 1:].detach()
+        s, preds = Z[:, 0], []
+        for k in range(K):
+            s = pred(torch.cat([s, A[e, t0 + k]], -1))
+            preds.append(s)
+        preds = torch.stack(preds, 1)  # (B, K, L)
+        pred_loss = F.mse_loss(preds, tgt)
+        regs = [vicreg_terms(Z[:, k]) for k in range(K + 1 if jc.reg_all_encodings else 1)]
+        if jc.reg_predictions:
+            regs += [vicreg_terms(preds[:, k]) for k in range(K)]
+        var_loss = torch.stack([r[0] for r in regs]).mean()
+        cov_loss = torch.stack([r[1] for r in regs]).mean()
+        loss = jc.pred_w * pred_loss + jc.var_w * var_loss + jc.cov_w * cov_loss
         opt.zero_grad()
         loss.backward()
         opt.step()
@@ -719,17 +790,51 @@ def train_jepa(cfg: PopulationConfig, jc: JEPAConfig | None = None, verbose=True
             with torch.no_grad():
                 for w_on, w_tgt in zip(enc.parameters(), enc_t.parameters()):
                     w_tgt.lerp_(w_on, 1 - jc.ema)
-    # Linear probe latent -> observed percept (the only place the percept is used).
+        if log is not None and (step % jc.log_every == 0 or step == jc.steps - 1):
+            entry = {
+                "step": step,
+                "pred": pred_loss.item(),
+                "var": var_loss.item(),
+                "cov": cov_loss.item(),
+                **collapse_stats(Z[:, 0].detach()),
+                **{f"pred_{k_}": v for k_, v in collapse_stats(preds[:, -1].detach()).items()},
+            }
+            log.append(entry)
+            if verbose:
+                print(
+                    "    JEPA " + "  ".join(f"{k_} {v:.3g}" for k_, v in entry.items()), flush=True
+                )
+    # Probe latent -> observed percept, on the frozen encoder (the only place the
+    # percept is used). Fitted on 90 % of the episodes, scored on the rest.
     with torch.no_grad():
-        Z = enc(hist[:, 1:].reshape(-1, n))
-        Pobs = Obs.reshape(-1, Obs.shape[-1]) @ (
-            sim.D.T if cfg.observe == "full" else torch.eye(Obs.shape[-1])
-        )
-        Z1 = torch.cat([Z, torch.ones(len(Z), 1)], 1)
-        W = torch.linalg.lstsq(Z1, Pobs).solution
-        probe_mse = F.mse_loss(Z1 @ W, Pobs).item()
+        Z = enc(hist[:, 1:]).reshape(-1, L)
+        P3 = Obs @ (sim.D.T if cfg.observe == "full" else torch.eye(Obs.shape[-1]))
+        Pobs = P3.reshape(-1, P3.shape[-1])
+    n_fit = int(0.9 * N) * (T1 - 1)
+    if jc.probe == "linear":
+        with torch.no_grad():
+            Z1 = torch.cat([Z, torch.ones(len(Z), 1)], 1)
+            W = torch.linalg.lstsq(Z1[:n_fit], Pobs[:n_fit]).solution
+
+        def probe(z):
+            return torch.cat([z, torch.ones(len(z), 1)], 1) @ W
+    else:
+        probe_net = mlp(L, Pobs.shape[1], hidden=128)
+        opt_p = torch.optim.Adam(probe_net.parameters(), lr=1e-3)
+        for _ in range(jc.probe_steps):
+            b = torch.randint(0, n_fit, (256,))
+            lp = F.mse_loss(probe_net(Z[b]), Pobs[b])
+            opt_p.zero_grad()
+            lp.backward()
+            opt_p.step()
+        probe_net.eval()
+        probe = probe_net
+    with torch.no_grad():
+        probe_mse = F.mse_loss(probe(Z[n_fit:]), Pobs[n_fit:]).item()
     if verbose:
-        print(f"    JEPA pred loss {loss.item():.4f}  probe mse {probe_mse:.4f}", flush=True)
+        print(f"    JEPA pred loss {pred_loss.item():.4f}  probe mse {probe_mse:.4f}", flush=True)
+    if log is not None:
+        log.append({"probe_mse": probe_mse, "percept_var": float(Pobs.var(0).mean())})
     enc.eval()
     pred.eval()
 
@@ -743,11 +848,13 @@ def train_jepa(cfg: PopulationConfig, jc: JEPAConfig | None = None, verbose=True
                 m=m,
                 u_max=cfg.u_max,
                 horizon=jc.plan_horizon,
+                knots=jc.plan_knots,
+                stationarity=jc.plan_stationarity,
             )
 
         def model_step(self, s, a):
             s2 = pred(torch.cat([s, a], -1))
-            zp = torch.cat([s2, torch.ones(len(s2), 1)], 1) @ W
+            zp = probe(s2)
             return s2, -((zp - self.z_star) ** 2).sum(-1) - cfg.lam_u * (a**2).sum(-1)
 
         def reset(self):
@@ -757,4 +864,6 @@ def train_jepa(cfg: PopulationConfig, jc: JEPAConfig | None = None, verbose=True
             self.z_star = feat[0, -cfg.dz :]
             return self.planner(feat)
 
-    return TorchPolicyController(Plan(), "JEPA-style + MPPI")
+    ctrl = TorchPolicyController(Plan(), "JEPA-style + MPPI")
+    ctrl.enc, ctrl.pred, ctrl.probe, ctrl.obs_only = enc, pred, probe, obs_only  # diagnostics
+    return ctrl

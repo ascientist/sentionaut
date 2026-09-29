@@ -131,10 +131,24 @@ def test_learned_methods_smoke():
         train_tdmpc(
             cfg, TDMPCConfig(steps=640, start=320, n_envs=16, updates_per_step=1), verbose=False
         ),
-        train_jepa(cfg, JEPAConfig(episodes=100, steps=5, plan_horizon=3), verbose=False),
+        train_jepa(
+            cfg, JEPAConfig(episodes=100, steps=5, plan_horizon=3, probe_steps=5), verbose=False
+        ),
         train_bc(cfg, demos, steps=5, verbose=False),
         train_diffusion(cfg, demos, steps=5, verbose=False),
     ]
     for ctrl in ctrls:
         r = evaluate(cfg, lambda c=ctrl: c, n_patients=1)
         assert np.isfinite(r["ss_error"])
+
+
+def test_vicreg_terms_detect_collapse():
+    torch = pytest.importorskip("torch")
+    from sentionaut.neurostim.canonical_learned import collapse_stats, vicreg_terms
+
+    iso = torch.randn(512, 16)
+    collapsed = torch.randn(512, 1).expand(512, 16) * 0.01  # one tiny shared direction
+    var_iso, cov_iso = vicreg_terms(iso)
+    var_col, cov_col = vicreg_terms(collapsed)
+    assert var_iso < 0.1 < var_col
+    assert collapse_stats(iso)["eff_rank"] > 14 and collapse_stats(collapsed)["eff_rank"] < 2

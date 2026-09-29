@@ -106,7 +106,7 @@ def budgets():
         return (
             SACConfig(steps=4000, start=1000),
             TDMPCConfig(steps=4000, start=1000),
-            JEPAConfig(episodes=200, steps=200),
+            JEPAConfig(episodes=200, steps=200, probe_steps=200),
             64,
             300,
             300,
