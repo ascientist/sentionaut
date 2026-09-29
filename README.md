@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/sentionaut-logo.jpg" alt="Sentionaut logo" width="420">
+</p>
+
 # Sentionaut
 
 A modular, GPU-native PyTorch framework of swappable prosthetic-vision
