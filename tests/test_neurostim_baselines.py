@@ -152,3 +152,31 @@ def test_vicreg_terms_detect_collapse():
     var_col, cov_col = vicreg_terms(collapsed)
     assert var_iso < 0.1 < var_col
     assert collapse_stats(iso)["eff_rank"] > 14 and collapse_stats(collapsed)["eff_rank"] < 2
+
+
+def test_training_seeds_never_reuse_evaluation_patients():
+    """evaluate() draws held-out patients from seeds 1000..1000+N; every training
+    stream (SAC 10k+, TD-MPC 20k+, JEPA 30k+, demos 50k+) must stay clear of them."""
+    import re
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    src = (root / "src/sentionaut/neurostim/canonical_learned.py").read_text()
+    tut = (root / "examples/neurostim_baselines_tutorial.py").read_text()
+    offsets = [int(x.replace("_", "")) for x in re.findall(r"seed=(\d[\d_]*) \+ ", src)]
+    offsets.append(int(re.search(r"DEMO_SEED = (\d[\d_]*)", tut).group(1).replace("_", "")))
+    eval_seeds = set(range(1000, 1000 + 200))
+    for off in offsets:
+        assert not eval_seeds & set(range(off, off + 100)), off  # 100 training seeds
+
+
+def test_sigreg_penalises_collapse_scale_and_tails_not_gaussians():
+    torch = pytest.importorskip("torch")
+    from sentionaut.neurostim.canonical_learned import sigreg
+
+    torch.manual_seed(0)
+    gauss = sigreg(torch.randn(512, 16))
+    assert gauss < 2
+    assert sigreg(torch.randn(512, 1).expand(512, 16) * 0.01) > 20 * gauss  # collapse
+    assert sigreg(3 * torch.randn(512, 16)) > 20 * gauss  # wrong scale
+    assert sigreg(torch.distributions.StudentT(2.0).sample((512, 16))) > 10 * gauss  # tails

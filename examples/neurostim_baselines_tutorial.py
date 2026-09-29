@@ -77,6 +77,9 @@ args.outdir.mkdir(parents=True, exist_ok=True)
 torch.set_num_threads(4)
 Q = args.quick
 N_PATIENTS = 4 if Q else 20
+# Training-data seeds must never coincide with the evaluation-patient seeds
+# (evaluate() uses 1000, 1001, ...): a shared seed means a shared patient.
+DEMO_SEED = 50_000
 
 # Display name, family, constructor. Learned methods are trained per regime below.
 CLASSICAL = [
@@ -140,7 +143,7 @@ for R in args.regimes:
         )
     sac_c, td_c, jepa_c, n_demo, bc_steps, diff_steps = budgets()
     t = time.time()
-    demos = collect_demos(cfg, n_demo, seed=1 + 1000 * args.seed)
+    demos = collect_demos(cfg, n_demo, seed=DEMO_SEED + args.seed)
     demos_by_regime[R] = demos
     print(
         f"  demonstrations from the MPPI teacher: {demos[0].shape[0]} episodes ({time.time() - t:.0f}s)"

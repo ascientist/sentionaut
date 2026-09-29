@@ -211,9 +211,28 @@ property of the method, not a bug:
   - *Regularisation.* VICReg (25 / 25 / 1) is now applied to every embedding
     the loss touches: the encoder output at each timestep, the prediction
     targets included, and every predictor output.
-  - *No collapse, with or without it.* Per-dimension std stays at about 1.0
-    and the effective rank at 15.6–15.8 out of 16, both before and after the
-    change (`examples/neurostim_jepa_diagnostics.py` logs both over training).
+  - *Collapse is detectable, and prevented.* End of training, regime A:
+
+    | Variant | Effective rank / 16 | Per-dim std | Non-Gaussianity | MLP percept probe | Control |
+    | --- | ---: | ---: | ---: | ---: | ---: |
+    | no regulariser (control) | 9.9 | 0.49 (min 0.25) | 7.8 | 0.014 | 1.82 (88 % fail) |
+    | VICReg 25/25/1, all embeddings | 15.6 | 1.13 | 1.05 | 0.010 | 1.13 (62 % fail) |
+    | LeJEPA (SIGReg, λ = 0.05, no stop-gradient) | 15.9 | 0.97 | 0.55 | 0.029 | 1.86 (88 % fail) |
+
+    Without a regulariser the latent partially collapses (rank 13 → 10,
+    shrinking std). It does not fully collapse, because the predictor and
+    stop-gradient behave as in BYOL/SimSiam. The metrics flag it, so their "no
+    collapse" readings for VICReg and LeJEPA can be trusted. SIGReg gives the
+    most isotropic, most Gaussian latent, which is what it optimises. None
+    of the three fixes control.
+  - *Why SIGReg as well as VICReg.* VICReg constrains only the first two
+    moments: an embedding can have unit variance and no correlation and still
+    be clustered or heavy-tailed. SIGReg (LeJEPA) matches the whole
+    distribution to an isotropic Gaussian, the embedding distribution LeJEPA
+    argues minimises downstream probe risk, and needs no stop-gradient or
+    EMA teacher. Its sketch has a blind spot: high-dimensional ±1 clusters
+    project to near-Gaussian 1-D marginals (central limit theorem) and pass.
+    It costs about 2× VICReg here.
   - *The information is there, nonlinearly.* A *linear* probe reads the
     percept poorly (0.41 MSE against a variance of 2.4). An *MLP* probe on the
     same latent reaches 0.010, as good as on the raw input (0.009). The
@@ -263,7 +282,7 @@ collapse (std, effective rank), information (linear and MLP probes, 5-step
 predictions) and control:
 
 ```bash
-sbatch --array=0-31 scripts/slurm_neurostim_jepa.sh      # 8 variants x 4 regimes
+sbatch --array=0-39 scripts/slurm_neurostim_jepa.sh      # 10 variants x 4 regimes
 ```
 
 **Multiple seeds on a cluster.** The table above is one training seed, and

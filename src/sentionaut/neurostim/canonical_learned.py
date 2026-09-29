@@ -691,6 +691,31 @@ def vicreg_terms(z, eps: float = 1e-4):
     return F.relu(1 - std).mean(), (off**2).sum() / z.shape[1]
 
 
+def sigreg(z, n_dirs: int = 256, n_t: int = 17, t_max: float = 3.0, generator=None):
+    """SIGReg (LeJEPA, Balestriero & LeCun 2025): push embeddings towards N(0, I).
+
+    Sketched: project on ``n_dirs`` random unit directions, then run the
+    Epps-Pulley test on each 1-D projection. That test compares the empirical
+    characteristic function with the standard normal one, exp(-t^2/2):
+
+        EP = n * integral |phi_n(t) - exp(-t^2/2)|^2 exp(-t^2/2) dt
+
+    (trapezoid rule on [0, t_max]; the integrand is even in t). A projection that
+    is constant (collapse) or non-Gaussian (clusters, heavy tails, wrong scale)
+    is penalised. VICReg constrains only the first two moments. Fresh directions
+    each call make it cover all of them in expectation.
+    """
+    B, L = z.shape
+    dirs = torch.randn(L, n_dirs, generator=generator)
+    dirs = dirs / dirs.norm(dim=0, keepdim=True)
+    x = z @ dirs  # (B, n_dirs)
+    t = torch.linspace(0, t_max, n_t)
+    xt = x[..., None] * t  # (B, n_dirs, n_t)
+    gauss = torch.exp(-0.5 * t**2)
+    err = (torch.cos(xt).mean(0) - gauss) ** 2 + torch.sin(xt).mean(0) ** 2
+    return (B * torch.trapezoid(err * gauss, t, dim=-1)).mean()
+
+
 @torch.no_grad()
 def collapse_stats(z):
     """Collapse diagnostics of embeddings ``(B, L)``.
@@ -702,10 +727,14 @@ def collapse_stats(z):
     z = z - z.mean(0)
     sv = torch.linalg.svdvals(z)
     p = sv / sv.sum()
+    zs = z / (z.std(0) + 1e-8)  # scale-free Gaussianity: shape only, not variance
     return {
         "std_min": float(z.std(0).min()),
         "std_mean": float(z.std(0).mean()),
         "eff_rank": float(torch.exp(-(p * torch.log(p + 1e-12)).sum())),
+        # Epps-Pulley on fixed directions of the standardised embedding: ~0-1 for a
+        # Gaussian sample, large for clustered or heavy-tailed ones.
+        "nongauss": float(sigreg(zs, generator=torch.Generator().manual_seed(0))),
     }
 
 
@@ -723,9 +752,17 @@ class JEPAConfig:
     # rollout + 1 timesteps (the prediction targets included) and each predictor
     # output. Regularising only the first encoding lets targets and predictions
     # shrink, which is exactly how a predictive loss collapses.
+    # reg: "vicreg" (variance/covariance, 2nd moments), "sigreg" (LeJEPA: the full
+    # distribution matched to an isotropic Gaussian), or "none" (the control:
+    # nothing prevents collapse).
+    reg: str = "vicreg"
     pred_w: float = 25.0
     var_w: float = 25.0
     cov_w: float = 1.0
+    sigreg_w: float = 0.05  # LeJEPA's lambda: loss = (1 - lambda) pred + lambda SIGReg
+    # Targets without gradient (PLDM / BYOL-style). LeJEPA drops it: SIGReg alone
+    # prevents collapse, with no stop-gradient or teacher-student heuristics.
+    stop_grad: bool = True
     reg_predictions: bool = True
     reg_all_encodings: bool = True  # False: only the first encoding (the old setup)
     # Read-out of the percept from the frozen latent, used by the planner's cost.
@@ -770,19 +807,30 @@ def train_jepa(cfg: PopulationConfig, jc: JEPAConfig | None = None, verbose=True
             with torch.no_grad():
                 tgt = enc_t(hist[e[:, None], ts[:, 1:]])
         else:
-            tgt = Z[:, 1:].detach()
+            tgt = Z[:, 1:].detach() if jc.stop_grad else Z[:, 1:]
         s, preds = Z[:, 0], []
         for k in range(K):
             s = pred(torch.cat([s, A[e, t0 + k]], -1))
             preds.append(s)
         preds = torch.stack(preds, 1)  # (B, K, L)
         pred_loss = F.mse_loss(preds, tgt)
-        regs = [vicreg_terms(Z[:, k]) for k in range(K + 1 if jc.reg_all_encodings else 1)]
+        embs = [Z[:, k] for k in range(K + 1 if jc.reg_all_encodings else 1)]
         if jc.reg_predictions:
-            regs += [vicreg_terms(preds[:, k]) for k in range(K)]
-        var_loss = torch.stack([r[0] for r in regs]).mean()
-        cov_loss = torch.stack([r[1] for r in regs]).mean()
-        loss = jc.pred_w * pred_loss + jc.var_w * var_loss + jc.cov_w * cov_loss
+            embs += [preds[:, k] for k in range(K)]
+        zero = torch.zeros(())
+        var_loss = cov_loss = sig_loss = zero
+        if jc.reg == "vicreg":
+            regs = [vicreg_terms(z_) for z_ in embs]
+            var_loss = torch.stack([r[0] for r in regs]).mean()
+            cov_loss = torch.stack([r[1] for r in regs]).mean()
+            loss = jc.pred_w * pred_loss + jc.var_w * var_loss + jc.cov_w * cov_loss
+        elif jc.reg == "sigreg":
+            sig_loss = torch.stack([sigreg(z_) for z_ in embs]).mean()
+            loss = (1 - jc.sigreg_w) * pred_loss + jc.sigreg_w * sig_loss
+        elif jc.reg == "none":
+            loss = pred_loss
+        else:
+            raise ValueError(jc.reg)
         opt.zero_grad()
         loss.backward()
         opt.step()
@@ -796,6 +844,7 @@ def train_jepa(cfg: PopulationConfig, jc: JEPAConfig | None = None, verbose=True
                 "pred": pred_loss.item(),
                 "var": var_loss.item(),
                 "cov": cov_loss.item(),
+                "sigreg": sig_loss.item(),
                 **collapse_stats(Z[:, 0].detach()),
                 **{f"pred_{k_}": v for k_, v in collapse_stats(preds[:, -1].detach()).items()},
             }

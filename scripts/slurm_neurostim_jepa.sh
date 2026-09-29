@@ -1,8 +1,8 @@
 #!/bin/bash
 # JEPA diagnostics (collapse, information, control): one task per (variant, regime).
 #
-#   sbatch --array=0-31 scripts/slurm_neurostim_jepa.sh          # 8 variants x 4 regimes
-#   SEED=1 sbatch --array=0-31 scripts/slurm_neurostim_jepa.sh   # another seed
+#   sbatch --array=0-39 scripts/slurm_neurostim_jepa.sh          # 10 variants x 4 regimes
+#   SEED=1 sbatch --array=0-39 scripts/slurm_neurostim_jepa.sh   # another seed
 #
 # Results: results/neurostim_jepa/<regime>_<variant>_seed<k>.json. CPU-bound.
 #SBATCH --job-name=neurostim-jepa
@@ -14,7 +14,7 @@
 
 set -euo pipefail
 
-VARIANTS=(old vicreg-linprobe vicreg vicreg-ema vicreg-L32 vicreg-long vicreg-H20k4 vicreg-H30k6)
+VARIANTS=(noreg lejepa old vicreg-linprobe vicreg vicreg-ema vicreg-L32 vicreg-long vicreg-H20k4 vicreg-H30k6)
 REGIMES=(A B C D)
 V=${VARIANTS[$((SLURM_ARRAY_TASK_ID % ${#VARIANTS[@]}))]}
 R=${REGIMES[$((SLURM_ARRAY_TASK_ID / ${#VARIANTS[@]}))]}

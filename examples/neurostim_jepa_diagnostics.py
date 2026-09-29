@@ -47,6 +47,11 @@ def mlp_probe_mse(x, y, steps=3000, seed=0):
 
 
 VARIANTS = {
+    # Control: no regulariser, stop-gradient targets. Nothing prevents collapse, so
+    # the diagnostics must show it here, or they cannot be trusted elsewhere.
+    "noreg": dict(reg="none"),
+    # LeJEPA: SIGReg on every embedding, no stop-gradient, lambda = 0.05.
+    "lejepa": dict(reg="sigreg", stop_grad=False),
     # The configuration before this fix: weak weights, only the first encoding regularised.
     "old": dict(
         pred_w=1.0,
