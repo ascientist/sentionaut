@@ -13,6 +13,7 @@ nav = [
   { "Nomenclature" = "nomenclature.md" },
   { "Models" = [
     "models/index.md",
+    "models/demos.md",
     "models/axonmap.md",
     "models/scoreboard.md",
     "models/dynaphos.md",

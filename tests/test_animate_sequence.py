@@ -17,6 +17,12 @@ def test_schedule_covers_patterns_ramp_and_train():
     ramp = [s.amp for s in steps if s.stage == "ramp" and s.electrodes]
     assert ramp == sorted(ramp) and set(ramp) == {1.0, 2.0, 3.0}
 
+    picks = animate.key_frames(steps)
+    assert [steps[i].stage for i in picks[:5]] == ["single", "pair", "ramp", "ramp", "ramp"]
+    assert [steps[i].amp for i in picks[2:5]] == [1.0, 2.0, 3.0]
+    assert all(steps[i + 1] != steps[i] for i in picks[:5])
+    assert not steps[picks[5]].electrodes and steps[picks[5] + 1].stage.startswith("pulse")
+
 
 def test_stimulation_zone_is_centre_plus_neighbours():
     xy = np.array([[x, y] for y in range(3) for x in range(3)], dtype=float)
@@ -52,6 +58,10 @@ def test_sequence_render_keeps_pose_fixed(tmp_path, monkeypatch):
         train_on=1,
         train_rest=1,
     )
-    assert [p.name for p in paths] == ["scoreboard_sequence.gif"]
-    assert paths[0].stat().st_size > 0
+    assert [p.name for p in paths] == [
+        "scoreboard_sequence.gif",
+        "scoreboard_sequence_stages.png",
+        "scoreboard_sequence_timeline.png",
+    ]
+    assert all(p.stat().st_size > 0 for p in paths)
     assert poses and all(p == Pose() for p in poses)

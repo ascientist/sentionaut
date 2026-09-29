@@ -273,6 +273,120 @@ def sequence_schedule(
     return steps
 
 
+STAGE_COLOURS = {
+    "single": "tab:blue",
+    "pair": "tab:green",
+    "ramp": "tab:orange",
+    "train": "tab:purple",
+}
+
+
+def _kind(stage: str) -> str:
+    return "train" if stage.startswith("pulse train") else stage
+
+
+def key_frames(steps: list[Step]) -> list[int]:
+    """Frames that summarise the sequence: end of the first single pulse, the first
+    pair, each ramp level, and the last rest frame before the pulse train."""
+    ends = [
+        i
+        for i, st in enumerate(steps)
+        if st.electrodes and (i + 1 == len(steps) or steps[i + 1] != st)
+    ]
+    single = next(i for i in ends if steps[i].stage == "single")
+    pair = next(i for i in ends if steps[i].stage == "pair")
+    ramp = [i for i in ends if steps[i].stage == "ramp"]
+    rest = next(i for i in range(ramp[-1] + 1, len(steps)) if steps[i].electrodes) - 1
+    return [single, pair, *ramp, rest]
+
+
+def _step_label(st: Step, names, unit: str) -> str:
+    if not st.electrodes:
+        return "rest"
+    return f"{' + '.join(names[e] for e in st.electrodes)} @ {st.amp:g} {unit}"
+
+
+def _sequence_figures(
+    scene: Scene,
+    steps: list[Step],
+    images: list[np.ndarray],
+    vmax: float,
+    unit: str,
+    dt_ms: float,
+    outdir: Path,
+    name: str,
+    hidden: dict | None = None,
+) -> list[Path]:
+    """Key-frame strip and peak-brightness timeline used by the docs walkthrough.
+
+    ``hidden`` optionally adds a panel with per-frame hidden state of one electrode
+    (Dynaphos activation and memory trace), whose brightness output saturates and
+    so hides the dynamics that the sequence is meant to show.
+    """
+    cfg = scene.cfg
+    extent = [cfg.xrange[0], cfg.xrange[1], cfg.yrange[0], cfg.yrange[1]]
+    picks = key_frames(steps)
+
+    fig, axes = plt.subplots(1, len(picks), figsize=(2.2 * len(picks), 2.7), dpi=100)
+    for n, (ax, i) in enumerate(zip(axes, picks), start=1):
+        st = steps[i]
+        ax.imshow(images[i], cmap="inferno", extent=extent, origin="lower", vmin=0.0, vmax=vmax)
+        head = f"({n}) {_kind(st.stage) if st.electrodes else 'rest'}, t={i * dt_ms:.0f} ms"
+        ax.set_title(f"{head}\n{_step_label(st, scene.implant.names, unit)}", fontsize=7)
+        ax.set_xticks([])
+        ax.set_yticks([])
+    fig.tight_layout()
+    stages = outdir / f"{name}_stages.png"
+    fig.savefig(stages)
+    plt.close(fig)
+
+    t = np.arange(len(images)) * dt_ms
+    peak = np.array([float(img.max()) for img in images])
+    rows = 2 if hidden else 1
+    fig, axs = plt.subplots(rows, 1, figsize=(8, 2.8 * rows), dpi=100, sharex=True, squeeze=False)
+    for axis in axs[:, 0]:
+        start = None
+        for i, st in enumerate(steps):
+            if st.electrodes and start is None:
+                start = i
+            if start is not None and (i + 1 == len(steps) or steps[i + 1] != st):
+                axis.axvspan(
+                    start * dt_ms,
+                    (i + 1) * dt_ms,
+                    color=STAGE_COLOURS[_kind(st.stage)],
+                    alpha=0.2,
+                )
+                start = None
+    ax = axs[0, 0]
+    ax.plot(t, peak, color="black", lw=1.2)
+    for n, i in enumerate(picks, start=1):
+        ax.annotate(
+            f"({n})", (t[i], peak[i]), textcoords="offset points", xytext=(0, 5), fontsize=8
+        )
+        ax.plot(t[i], peak[i], "o", color="black", ms=3)
+    handles = [plt.Rectangle((0, 0), 1, 1, color=c, alpha=0.3) for c in STAGE_COLOURS.values()]
+    labels = [f"{k} stimulation" for k in STAGE_COLOURS]
+    ax.legend(handles, labels, fontsize=7, loc="upper left", ncol=4, frameon=False)
+    ax.set_ylim(0, peak.max() * 1.25 or 1.0)
+    ax.set_ylabel("peak percept brightness")
+    if hidden:
+        hx = axs[1, 0]
+        hx.plot(t, hidden["A"] * 1e7, color="tab:red", lw=1.2, label="activation A")
+        hx.axhline(hidden["a_thr"] * 1e7, color="tab:red", ls=":", lw=1, label="threshold")
+        hx.axhline(hidden["a50"] * 1e7, color="0.4", ls="--", lw=1, label="half brightness")
+        hx.set_ylabel(f"A of electrode {hidden['electrode']} (x1e-7)")
+        hx.legend(fontsize=7, loc="upper left", ncol=3, frameon=False)
+        qx = hx.twinx()
+        qx.plot(t, hidden["Q"], color="tab:cyan", lw=1.2)
+        qx.set_ylabel("memory trace Q (uA)", color="tab:cyan")
+    axs[-1, 0].set_xlabel("time (ms)")
+    fig.tight_layout()
+    timeline = outdir / f"{name}_timeline.png"
+    fig.savefig(timeline)
+    plt.close(fig)
+    return [stages, timeline]
+
+
 def animate_sequence(
     model_name: str,
     outdir: Path,
@@ -302,6 +416,8 @@ def animate_sequence(
 
     state = None
     images = []
+    trace_a: list[float] = []
+    trace_q: list[float] = []
     for st in steps:
         amp = torch.zeros(N, device=device)
         amp[list(st.electrodes)] = st.amp
@@ -320,19 +436,30 @@ def animate_sequence(
             action = Action(amp=amp, rho=rho, pose=Pose())
         state = model.step(state, action)
         images.append(state.image.detach().cpu().numpy())
+        if "A" in state.aux:
+            trace_a.append(float(state.aux["A"][zone[0]]))
+            trace_q.append(float(state.aux["Q"][zone[0]]))
 
     # One colour scale for the whole clip, otherwise every fading frame is
     # re-normalised to full brightness and the temporal dynamics disappear.
     vmax = max(float(img.max()) for img in images) or 1.0
     frames = []
     for st, img in zip(steps, images):
-        if st.electrodes:
-            detail = f"{' + '.join(names[e] for e in st.electrodes)} @ {st.amp:g} {unit}"
-        else:
-            detail = "rest"
-        title = f"{model_name} percept, fixed implant\n{st.stage}: {detail}"
+        title = f"{model_name} percept, fixed implant\n{st.stage}: {_step_label(st, names, unit)}"
         frames.append(_draw_frame(scene, img, title, elec, zone, st.electrodes, vmax=vmax))
-    return _write(frames, outdir, f"{model_name}_sequence", mp4=False)
+    name = f"{model_name}_sequence"
+    paths = _write(frames, outdir, name, mp4=False)
+    dt_ms = float(getattr(model, "dt_ms", getattr(model, "dt", 20.0)))
+    hidden = None
+    if trace_a:
+        hidden = {
+            "A": np.array(trace_a),
+            "Q": np.array(trace_q),
+            "a_thr": model.a_thr,
+            "a50": model.a50,
+            "electrode": names[zone[0]],
+        }
+    return paths + _sequence_figures(scene, steps, images, vmax, unit, dt_ms, outdir, name, hidden)
 
 
 def main(

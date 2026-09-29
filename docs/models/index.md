@@ -15,3 +15,7 @@ stimulation in, predicted visual percept out. See
 
 Torch ports are parity-tested against pulse2percept 0.9.0. Full citations live
 on [References](../references.md).
+
+New to these models? Start with [how to read the stimulation demos](demos.md):
+each physics model page then walks through a short clip of the same
+stimulation sequence, so you can compare how the three models respond.
