@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/sentionaut-logo.jpg" alt="Sentionaut logo" width="420">
+  <img src="assets/sentionaut-mark.png" alt="Sentionaut logo" width="120">
 </p>
 
 # Sentionaut

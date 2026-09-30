@@ -27,6 +27,15 @@ nav = [
   { "References" = "references.md" },
 ]
 
+[project.theme]
+logo = "assets/sentionaut-mark.png"
+favicon = "assets/favicon.png"
+
+[[project.theme.palette]]
+scheme = "default"
+primary = "black"
+accent = "red"
+
 # Math: $...$ / $$...$$ in Markdown (also rendered natively on GitHub).
 extra_javascript = [
   "javascripts/mathjax.js",
