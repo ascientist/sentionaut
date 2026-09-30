@@ -98,3 +98,6 @@ implant, topo, model = build_components(cfg)
 ```
 
 Source: `src/sentionaut/models/axonmap.py`
+
+A specialist student of this model, with the same `step` and the fade left
+exact, is the [axon-map world model](axonmap-world.md).

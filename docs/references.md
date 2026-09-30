@@ -43,3 +43,41 @@ eLife 13, e85812 (2024).
 
 Dynaphos cortical phosphene model (temporal charge / activation dynamics).
 Implemented here as `DynaphosTorch`.
+
+## Ha and Schmidhuber 2018
+
+David Ha, Jürgen Schmidhuber.
+*World Models.*
+arXiv:1803.10122 (2018).
+[doi:10.5281/zenodo.1207631](https://doi.org/10.5281/zenodo.1207631)
+
+The `f(s_t, a_t) → s_{t+1}` interface used by every percept model here.
+
+## Dosovitskiy et al. 2020
+
+Alexey Dosovitskiy, Lucas Beyer, Alexander Kolesnikov, et al.
+*An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale.*
+ICLR 2021.
+[arXiv:2010.11929](https://arxiv.org/abs/2010.11929)
+
+Patch tokens. The axon-map student uses parameter-free 2D sin/cos positions
+because the percept grid size changes.
+
+## Jaegle et al. 2021
+
+Andrew Jaegle, Felix Gimeno, Andrew Brock, et al.
+*Perceiver: General Perception with Iterative Attention.*
+ICML 2021.
+[arXiv:2103.03206](https://arxiv.org/abs/2103.03206)
+
+Cross-attention over a variable set. Electrodes are that set.
+
+## Peebles and Xie 2023
+
+William Peebles, Saining Xie.
+*Scalable Diffusion Models with Transformers.*
+ICCV 2023.
+[arXiv:2212.09748](https://arxiv.org/abs/2212.09748)
+
+Adaptive layer norm, used here to condition on `rho` and `axlambda`. The
+student is not a diffusion model.

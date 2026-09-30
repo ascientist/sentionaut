@@ -27,3 +27,7 @@ model = UnifiedWorldModel(dim=128, depth=4, heads=4, patch_size=8)
 ```
 
 Source: `src/sentionaut/learned/model.py`
+
+The axon-map specialist, which learns only the spatial drive and keeps the
+analytical fade, is documented separately:
+[axon-map world model](axonmap-world.md).

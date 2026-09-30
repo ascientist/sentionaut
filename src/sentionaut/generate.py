@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -124,13 +125,18 @@ def generate_world_dataset(
     compression: str | None = None,
     dt_ms: float | None = None,
     silent_tail: int = 0,
+    timing_path: Path | None = None,
+    write_slab: int = 32,
 ) -> Path:
     if not configs:
         raise click.BadParameter("at least one config required")
     device = device or get_device(configs[0].device)
     ranges = ranges or ActionRanges()
     rng = np.random.default_rng(seed)
+    if device.type == "cuda":
+        torch.cuda.reset_peak_memory_stats()
 
+    t_build = time.perf_counter()
     built = []
     grid_shape = None
     max_elec = 0
@@ -148,6 +154,8 @@ def generate_world_dataset(
             raise ValueError("All configs must share the same percept grid shape.")
         max_elec = max(max_elec, implant.n_electrodes)
         built.append((cfg, implant, wm))
+        print(f"percept device: {wm._device()}", flush=True)
+    t_build = time.perf_counter() - t_build
 
     H, W = grid_shape
     steps_per_ep = sequence_length + silent_tail
@@ -181,13 +189,42 @@ def generate_world_dataset(
 
         i = 0
         ep_global = 0
+        t_step = 0.0
+        t_io = 0.0
+        n_steps = 0
+        pending: list[dict] = []
+        slab = max(1, int(write_slab))
+
+        def flush() -> None:
+            nonlocal i
+            if not pending:
+                return
+            n = len(pending)
+            sl = slice(i, i + n)
+            s_t[sl] = np.stack([row["s_t"] for row in pending])
+            s_tp1[sl] = np.stack([row["s_tp1"] for row in pending])
+            aux_t[sl] = np.stack([row["aux"] for row in pending])
+            amp_d[sl] = np.stack([row["amp"] for row in pending])
+            freq_d[sl] = np.stack([row["freq"] for row in pending])
+            pdur_d[sl] = np.stack([row["pdur"] for row in pending])
+            rho_d[sl] = np.array([row["rho"] for row in pending], dtype=np.float32)
+            axl_d[sl] = np.array([row["axlambda"] for row in pending], dtype=np.float32)
+            cfg_id[sl] = np.array([row["cfg"] for row in pending], dtype=np.int32)
+            episode_id[sl] = np.array([row["ep"] for row in pending], dtype=np.int32)
+            step_in_episode[sl] = np.array([row["step"] for row in pending], dtype=np.int32)
+            i += n
+            pending.clear()
+
         for cfg_idx, (cfg, implant, wm) in enumerate(built):
             n_e = implant.n_electrodes
             scale_samples = []
             for _ in range(min(episodes, 4)):
                 action, _ = sample_action(cfg, n_e, rng, ranges, device)
-                frame = wm.step(wm.initial_state(device), action).image.detach().cpu().numpy()
-                scale_samples.append(float(np.percentile(frame, 99)))
+                t0 = time.perf_counter()
+                frame = wm.step(wm.initial_state(device), action).image.detach()
+                _sync_device(device)
+                t_step += time.perf_counter() - t0
+                scale_samples.append(float(np.percentile(frame.cpu().numpy(), 99)))
             percept_scales[cfg_idx] = max(scale_samples) if scale_samples else 1.0
 
             for _ in range(episodes):
@@ -196,26 +233,66 @@ def generate_world_dataset(
                     silent = step >= sequence_length
                     action, rec = sample_action(cfg, n_e, rng, ranges, device, silent=silent)
                     s_prev = state.image.detach()
+                    t0 = time.perf_counter()
                     state = wm.step(state, action)
+                    _sync_device(device)
+                    t_step += time.perf_counter() - t0
                     frame = state.image.detach()
+                    t1 = time.perf_counter()
                     a_map, q_map = _aux_maps(wm, state)
-                    s_t[i] = s_prev.cpu().numpy()
-                    s_tp1[i] = frame.cpu().numpy()
-                    aux_t[i, 0] = a_map
-                    aux_t[i, 1] = q_map
-                    amp_d[i, :n_e] = rec["amp"]
-                    freq_d[i, :n_e] = rec["freq"]
-                    pdur_d[i, :n_e] = rec["pdur"]
-                    rho_d[i] = rec["rho"]
-                    axl_d[i] = rec["axlambda"]
-                    cfg_id[i] = cfg_idx
-                    episode_id[i] = ep_global
-                    step_in_episode[i] = step
-                    i += 1
+                    amp = np.zeros(max_elec, dtype=np.float32)
+                    freq = np.zeros(max_elec, dtype=np.float32)
+                    pdur = np.zeros(max_elec, dtype=np.float32)
+                    amp[:n_e] = rec["amp"]
+                    freq[:n_e] = rec["freq"]
+                    pdur[:n_e] = rec["pdur"]
+                    aux = np.stack([a_map, q_map], axis=0)
+                    pending.append(
+                        {
+                            "s_t": s_prev.cpu().numpy(),
+                            "s_tp1": frame.cpu().numpy(),
+                            "aux": aux,
+                            "amp": amp,
+                            "freq": freq,
+                            "pdur": pdur,
+                            "rho": rec["rho"],
+                            "axlambda": rec["axlambda"],
+                            "cfg": cfg_idx,
+                            "ep": ep_global,
+                            "step": step,
+                        }
+                    )
+                    n_steps += 1
+                    if len(pending) >= slab:
+                        flush()
+                    t_io += time.perf_counter() - t1
                 ep_global += 1
+        t1 = time.perf_counter()
+        flush()
+        t_io += time.perf_counter() - t1
 
         meta.attrs["percept_scale"] = json.dumps(percept_scales)
+    if timing_path is not None:
+        peak = torch.cuda.max_memory_allocated() if device.type == "cuda" else 0
+        payload = {
+            "topography_s": t_build,
+            "gpu_step_s": t_step,
+            "h5_write_s": t_io,
+            "n_steps": n_steps,
+            "samples_per_s": n_steps / max(t_step + t_io, 1e-9),
+            "peak_gpu_mem_bytes": int(peak),
+            "device": str(device),
+            "write_slab": slab,
+        }
+        timing_path = Path(timing_path)
+        timing_path.parent.mkdir(parents=True, exist_ok=True)
+        timing_path.write_text(json.dumps(payload, indent=2))
     return output_path
+
+
+def _sync_device(device: torch.device) -> None:
+    if device.type == "cuda":
+        torch.cuda.synchronize()
 
 
 def _pair(ctx, param, value):
@@ -247,6 +324,8 @@ def _pair(ctx, param, value):
 @click.option("--device", type=str, default=None)
 @click.option("--seed", type=int, default=0, show_default=True)
 @click.option("--compression", type=str, default=None)
+@click.option("--timing", "timing_path", type=click.Path(path_type=Path), default=None)
+@click.option("--write-slab", type=int, default=32, show_default=True)
 def world_cli(
     output_path,
     models,
@@ -260,6 +339,8 @@ def world_cli(
     device,
     seed,
     compression,
+    timing_path,
+    write_slab,
 ):
     base = Config(
         model=list(models)[0],
@@ -280,6 +361,8 @@ def world_cli(
         compression=compression,
         dt_ms=dt_ms,
         silent_tail=silent_tail,
+        timing_path=timing_path,
+        write_slab=write_slab,
     )
     click.echo(str(path))
 
