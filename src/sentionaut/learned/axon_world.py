@@ -103,6 +103,20 @@ class AxonMapWorld(nn.Module):
         self.elec_xy.copy_(xy)
         return self
 
+    @classmethod
+    def from_pretrained(
+        cls,
+        repo_id: str = "ascientist/sentionaut-axon-world",
+        *,
+        filename: str = "axon_world.pt",
+        revision: str | None = None,
+        token: str | None = None,
+        device: torch.device | str | None = None,
+    ) -> "AxonMapWorld":
+        """Load a published checkpoint. ``repo_id`` may be a Hub id or a local directory."""
+        path = _resolve_weights(repo_id, filename, revision=revision, token=token)
+        return load_axon_world(path, device=device)
+
     def _to_patches(self, image: torch.Tensor):
         b, h, w = image.shape
         p = self.patch_size
@@ -360,6 +374,79 @@ def _load_ckpt(path: Path, model, opt) -> tuple[int, list[float], list[float]]:
     return int(ckpt["epoch"]), list(ckpt["loss_history"]), list(ckpt.get("val_history", []))
 
 
+def load_axon_world(path: str | Path, device: torch.device | str | None = None) -> AxonMapWorld:
+    """Rebuild a student from a checkpoint. Missing ``grid_shape`` means the 97×97 Argus run."""
+    ckpt = torch.load(Path(path), map_location="cpu", weights_only=False)
+    sd = ckpt["model"]
+    dim = int(sd["elec_embed.weight"].shape[0])
+    n_elec = int(sd["elec_xy"].shape[0])
+    depth = sum(1 for k in sd if k.endswith("cross.in_proj_weight"))
+    patch = int(round(sd["patch_unembed.weight"].shape[0] ** 0.5))
+    grid = tuple(int(v) for v in ckpt.get("grid_shape") or (97, 97))
+    model = AxonMapWorld(
+        grid,
+        n_elec,
+        dim=dim,
+        depth=depth,
+        heads=int(ckpt.get("heads") or 4),
+        patch_size=patch,
+        dt_ms=float(ckpt.get("dt_ms") or 20.0),
+    )
+    model.load_state_dict(sd)
+    return model.to(device or torch.device("cpu")).eval()
+
+
+def _resolve_weights(repo_id: str, filename: str, *, revision: str | None, token: str | None) -> Path:
+    local = Path(repo_id)
+    if local.is_dir():
+        return local / filename
+    from huggingface_hub import hf_hub_download
+
+    return Path(
+        hf_hub_download(repo_id=repo_id, filename=filename, revision=revision, token=token)
+    )
+
+
+def push_checkpoint(
+    ckpt_path: str | Path,
+    repo_id: str,
+    *,
+    token: str | None = None,
+    private: bool = False,
+) -> str:
+    """Upload a checkpoint and a small config so ``from_pretrained`` can rebuild it."""
+    from huggingface_hub import HfApi
+
+    ckpt_path = Path(ckpt_path)
+    ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
+    sd = ckpt["model"]
+    config = {
+        "grid_shape": list(ckpt.get("grid_shape") or [97, 97]),
+        "n_electrodes": int(sd["elec_xy"].shape[0]),
+        "dim": int(sd["elec_embed.weight"].shape[0]),
+        "depth": sum(1 for k in sd if k.endswith("cross.in_proj_weight")),
+        "heads": int(ckpt.get("heads") or 4),
+        "patch_size": int(round(sd["patch_unembed.weight"].shape[0] ** 0.5)),
+        "dt_ms": float(ckpt.get("dt_ms") or 20.0),
+        "implant": "argusii",
+    }
+    api = HfApi(token=token)
+    api.create_repo(repo_id, exist_ok=True, private=private, repo_type="model")
+    api.upload_file(
+        path_or_fileobj=str(ckpt_path),
+        path_in_repo="axon_world.pt",
+        repo_id=repo_id,
+        repo_type="model",
+    )
+    api.upload_file(
+        path_or_fileobj=json.dumps(config, indent=2).encode(),
+        path_in_repo="config.json",
+        repo_id=repo_id,
+        repo_type="model",
+    )
+    return repo_id
+
+
 def distill_hdf5(
     dataset_path: str | Path,
     *,
@@ -377,6 +464,7 @@ def distill_hdf5(
     patch_size: int = 4,
     num_workers: int = 0,
     bf16: bool = False,
+    init_ckpt: str | Path | None = None,
     model_factory: Callable[[tuple, int, float], nn.Module] | None = None,
     loss_fn: Callable[[nn.Module, dict], torch.Tensor] | None = None,
     train_stride: int = 1,
@@ -411,6 +499,10 @@ def distill_hdf5(
     history: list[float] = []
     val_history: list[float] = []
     ckpt = Path(ckpt_path) if ckpt_path else None
+    if init_ckpt and (ckpt is None or not ckpt.exists()):
+        blob = torch.load(Path(init_ckpt), map_location="cpu", weights_only=False)
+        model.load_state_dict(blob["model"])
+        model.to(device)
     if ckpt is not None and ckpt.exists():
         start_epoch, history, val_history = _load_ckpt(ckpt, model, opt)
         model.to(device)
@@ -576,6 +668,7 @@ def distill_online(
 @click.option("--bf16", is_flag=True, default=False)
 @click.option("--train-stride", type=int, default=1, show_default=True)
 @click.option("--val-stride", type=int, default=1, show_default=True)
+@click.option("--init-ckpt", type=click.Path(path_type=Path), default=None)
 def cli(
     dataset_path,
     epochs,
@@ -592,6 +685,7 @@ def cli(
     bf16,
     train_stride,
     val_stride,
+    init_ckpt,
 ):
     dev = get_device(device)
     if dev.type != "cuda" and device == "cuda":
@@ -612,6 +706,7 @@ def cli(
         bf16=bf16,
         train_stride=train_stride,
         val_stride=val_stride,
+        init_ckpt=init_ckpt,
     )
     click.echo(
         f"val_mse={out['val_mse']:.6f} samples_per_s={out['samples_per_s']:.2f} "
