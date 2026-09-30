@@ -99,10 +99,31 @@ uv run sentionaut-axon-video report --dataset data/axon_stream.h5 \
 `step(state, action)` keeps the teacher's contract; the context window rides in
 `State.aux`, so the same rollout loop drives either model.
 
+## On the cluster
+
+The reference run is one Mila job on one GPU:
+
+```bash
+sbatch scripts/mila_axon_video.sh                        # 97×97, the drive student's grid
+XYSTEP=0.5 SCALE=half sbatch scripts/mila_axon_video.sh  # 49×49, same as the numbers below
+```
+
+It generates the teacher streams on CUDA, trains the video model and the
+exact-fade baseline, and writes the report to
+`/network/scratch/j/jacob.lavoie/sentionaut/axonvideo/$SCALE/report`. Every stage
+resumes. The dataset is renamed into place only once it is complete, both
+trainings continue from their per-epoch checkpoints with their timers carried
+over, and a training stopped by the pre-timeout `SIGTERM` exits non-zero, so the
+report never runs on a half-trained model. Resubmit the same command to
+continue. Copy the report directory to `docs/assets/axon-video` to publish it.
+
 ## Results
 
-One CPU-only run: a 4-core x86-64 container, 15 GB RAM, torch 2.12.1. Rerun it
-with `make axon-video`.
+**These are not the cluster numbers.** They come from a CPU-only stand-in run
+of the same pipeline (4-core x86-64 container, 15 GB RAM, no GPU,
+torch 2.12.1, `make axon-video`) at the half grid, so treat the accuracy as
+indicative and the hardware section as a CPU baseline. The cluster job above
+replaces them.
 
 **Data.** Argus II, `(-12, 12)` dva at `xystep` 0.5, so a 49×49 grid. That is
 half the resolution of the [specialist's results](axonmap-world.md#results),

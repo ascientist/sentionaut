@@ -128,6 +128,22 @@ def test_stream_round_trip(tmp_path):
     )
     assert len(timing["val_history"]) == 2 and np.isfinite(timing["val_history"]).all()
 
+    assert timing["completed"] and timing["epochs_done"] == 2
+
+    resumed = train_video(
+        dataset,
+        context=4,
+        dim=32,
+        depth=1,
+        epochs=3,
+        batch_size=4,
+        device=torch.device("cpu"),
+        ckpt_path=ckpt,
+    )
+    assert resumed["epochs_done"] == 3
+    assert resumed["n_samples"] == timing["n_samples"] * 3 // 2
+    assert resumed["forward_backward_s"] > timing["forward_backward_s"]
+
     model = load_video(ckpt)
     assert model.context == 4
     horizon = horizon_errors(model, dataset, torch.device("cpu"))

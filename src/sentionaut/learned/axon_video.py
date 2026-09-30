@@ -577,11 +577,17 @@ def bench_step(model, dataset_path, device, calls: int = 20) -> dict:
         axlambda=cfg.axlambda,
     )
 
+    def _sync():
+        if device.type == "cuda":
+            torch.cuda.synchronize()
+
     def _timed(fn, warm):
         state = warm()
+        _sync()
         t0 = time.perf_counter()
         for _ in range(calls):
             state = fn(state)
+        _sync()
         return (time.perf_counter() - t0) / calls * 1000.0
 
     def warm_video():
@@ -648,6 +654,8 @@ def train(dataset_path, ckpt_path, timing_path, device, **kwargs):
         device=get_device(device),
         **kwargs,
     )
+    if not out["completed"]:
+        raise SystemExit(f"stopped after {out['epochs_done']} epochs; rerun to resume")
     click.echo(f"val_mse={out['val_mse']:.6f} samples_per_s={out['samples_per_s']:.2f}")
 
 
