@@ -1,4 +1,9 @@
-"""Modular GPU world model of prosthetic vision (retinal + cortical)."""
+"""Modular GPU world model of prosthetic vision (retinal + cortical).
+
+Documentation: https://ascientist.github.io/sentionaut/
+"""
+
+DOCS_URL = "https://ascientist.github.io/sentionaut/"
 
 _EXPORTS = {
     "generate_dataset": ("sentionaut.generate", "generate_dataset"),
@@ -21,4 +26,4 @@ def __getattr__(name: str):
     return value
 
 
-__all__ = list(_EXPORTS)
+__all__ = ["DOCS_URL", *_EXPORTS]

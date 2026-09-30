@@ -484,7 +484,7 @@ def main(
 def cli():  # pragma: no cover - thin click wrapper
     import click
 
-    @click.command()
+    @click.command(epilog="Docs: https://ascientist.github.io/sentionaut/models/demos/")
     @click.option(
         "--model",
         type=click.Choice(["axonmap", "scoreboard", "dynaphos", "all"]),

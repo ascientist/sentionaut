@@ -3,6 +3,8 @@
 I(p) = sum_regions sum_e amp_e * exp(-||c(p) - c_e||^2 / (2 rho^2)), with current
 restricted to the matching cortical hemisphere, displayed on the dva grid.
 Temporal state uses ``FadingTemporal`` on the spatial drive field.
+
+Docs: https://ascientist.github.io/sentionaut/models/scoreboard/
 """
 
 from __future__ import annotations

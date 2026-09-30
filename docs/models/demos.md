@@ -1,6 +1,6 @@
 # Stimulation demos: how to read them
 
-[Home](../index.md) · [Getting started](../getting-started.md) · [Nomenclature](../nomenclature.md) · [Models](index.md) · [References](../references.md)
+[Home](../index.md) · [Getting started](../getting-started.md) · [User guide](../user-guide.md) · [Nomenclature](../nomenclature.md) · [Models](index.md) · [References](../references.md)
 
 Each physics model page has a short demo clip. All three clips answer the same
 question:

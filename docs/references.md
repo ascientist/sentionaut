@@ -1,6 +1,6 @@
 # References
 
-[Home](index.md) · [Getting started](getting-started.md) · [Nomenclature](nomenclature.md) · [Models](models/index.md) · [References](references.md)
+[Home](index.md) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Nomenclature](nomenclature.md) · [Models](models/index.md) · [References](references.md)
 
 Full citations for papers linked from the [model pages](models/index.md).
 

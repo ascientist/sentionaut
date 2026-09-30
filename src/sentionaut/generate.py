@@ -299,7 +299,7 @@ def _pair(ctx, param, value):
     return (float(value[0]), float(value[1]))
 
 
-@click.command()
+@click.command(epilog="Docs: https://ascientist.github.io/sentionaut/user-guide/")
 @click.option("--output", "output_path", type=click.Path(path_type=Path), required=True)
 @click.option(
     "--model",
@@ -367,7 +367,7 @@ def world_cli(
     click.echo(str(path))
 
 
-@click.command()
+@click.command(epilog="Docs: https://ascientist.github.io/sentionaut/user-guide/")
 @click.option("--output", "output_path", type=click.Path(path_type=Path), required=True)
 @click.option("--model", "model", type=str, default="axonmap", show_default=True)
 @click.option("--samples", "samples", type=int, default=64, show_default=True)

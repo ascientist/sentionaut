@@ -130,7 +130,7 @@ def ablate(
     return results
 
 
-@click.group()
+@click.group(epilog="Docs: https://ascientist.github.io/sentionaut/models/world-model/")
 def cli():
     """Train / ablate the unified learned world model."""
 

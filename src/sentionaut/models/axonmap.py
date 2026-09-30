@@ -4,6 +4,8 @@ I(p) = max_q [ sum_e F_bright_e * exp(-||q - x_e||^2 / (2 rho^2 F_size_e))
                * sens(q)^(1/F_streak_e) ]
 with sens(q) = exp(-d_soma(q)^2 / (2 axlambda^2)), thresholded by thresh_percept.
 Temporal state uses ``FadingTemporal`` on the spatial drive field.
+
+Docs: https://ascientist.github.io/sentionaut/models/axonmap/
 """
 
 from __future__ import annotations

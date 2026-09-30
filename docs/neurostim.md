@@ -1,6 +1,6 @@
 # NeuroStim: closed-loop control benchmark
 
-[Home](index.md) · [Getting started](getting-started.md) · [Nomenclature](nomenclature.md) · [Models](models/index.md) · [NeuroStim](neurostim.md) · [References](references.md)
+[Home](index.md) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Nomenclature](nomenclature.md) · [Models](models/index.md) · [NeuroStim](neurostim.md) · [References](references.md)
 
 A tiny **constrained POMDP** for closed-loop neurostimulation. It is not a
 biophysical model. It is the smallest system that keeps what makes

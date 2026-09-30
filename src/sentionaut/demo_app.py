@@ -9,6 +9,7 @@ import numpy as np
 import streamlit as st
 import torch
 
+from sentionaut import DOCS_URL
 from sentionaut.calibrate import load_calibration
 from sentionaut.core.base import Action, Pose
 from sentionaut.core.config import CORTICAL_IMPLANTS, RETINAL_IMPLANTS, Config
@@ -34,6 +35,7 @@ def _build(model, implant, xystep, calibration_path):
 
 
 with st.sidebar:
+    st.markdown(f"[Documentation]({DOCS_URL}) · [Models]({DOCS_URL}models/)")
     st.header("Components")
     model = st.selectbox("Percept model", MODELS)
     cortical = model in ("scoreboard", "dynaphos")

@@ -1,6 +1,6 @@
 """NeuroStim: toy constrained POMDP for closed-loop neurostimulation control.
 
-See ``docs/neurostim.md`` and ``examples/neurostim_tutorial.py``.
+Docs: https://ascientist.github.io/sentionaut/neurostim/ (tutorial: ``examples/neurostim_tutorial.py``).
 """
 
 from .env import PRESETS, NeuroStimConfig, NeuroStimEnv, make

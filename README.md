@@ -1,32 +1,95 @@
 <p align="center">
-  <img src="assets/sentionaut-logo.jpg" alt="Sentionaut logo" width="420">
+  <a href="https://ascientist.github.io/sentionaut/">
+    <img src="assets/sentionaut-logo.jpg" alt="Sentionaut" width="420">
+  </a>
 </p>
 
-# Sentionaut
+<p align="center">
+  <strong>Differentiable, GPU-native world models of prosthetic vision.</strong><br>
+  Retinal and cortical phosphene physics in PyTorch, behind one <code>f(s<sub>t</sub>, a<sub>t</sub>) → s<sub>t+1</sub></code> interface.
+</p>
 
-A modular, GPU-native PyTorch framework of swappable prosthetic-vision
-components that reimplement [pulse2percept](https://pulse2percept.readthedocs.io)'s
-retinal **Biphasic Axon Map** plus the cortical **Scoreboard** and **Dynaphos**
-models, expose a shared world-model interface `f(s_t, a_t) -> s_{t+1}`, and feed
-a single conditioned learned world model evaluated against per-model specialists.
+<p align="center">
+  <a href="https://ascientist.github.io/sentionaut/"><img alt="Documentation" src="https://img.shields.io/badge/docs-ascientist.github.io%2Fsentionaut-c8102e"></a>
+  <a href="https://github.com/ascientist/sentionaut/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/ascientist/sentionaut/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/ascientist/sentionaut/actions/workflows/docs.yml"><img alt="Docs build" src="https://github.com/ascientist/sentionaut/actions/workflows/docs.yml/badge.svg"></a>
+  <img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11%2B-blue">
+  <img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-2.2%2B-ee4c2c">
+</p>
 
-The three analytical models run differentiably on GPU (Apple **MPS** locally,
-CUDA on cluster) and are parity-tested against pulse2percept.
+<p align="center">
+  <a href="https://ascientist.github.io/sentionaut/"><b>Documentation</b></a> ·
+  <a href="https://ascientist.github.io/sentionaut/getting-started/">Getting started</a> ·
+  <a href="https://ascientist.github.io/sentionaut/user-guide/">User guide</a> ·
+  <a href="https://ascientist.github.io/sentionaut/models/">Models</a> ·
+  <a href="https://ascientist.github.io/sentionaut/neurostim-formulation/">Closed-loop control</a> ·
+  <a href="https://ascientist.github.io/sentionaut/references/">References</a>
+</p>
 
-**Docs:** [docs/index.md](docs/index.md)
+---
 
-## Components
+Sentionaut is a modular PyTorch framework for **prosthetic vision**. It
+reimplements [pulse2percept](https://pulse2percept.readthedocs.io)'s retinal
+**Biphasic Axon Map** and cortical **Scoreboard** and **Dynaphos** models as
+differentiable GPU ports, parity-tested against the reference. Every model
+exposes the same world-model interface, so the physics simulators, a learned
+transformer world model and closed-loop stimulation controllers all plug into
+one another.
 
-Three axes are independently swappable via a `Config`:
+> **New to Sentionaut?** The
+> [documentation](https://ascientist.github.io/sentionaut/) explains the
+> framework from the ground up: what each model predicts, how the pieces fit
+> together, and how to reproduce every figure. Start with
+> [Getting started](https://ascientist.github.io/sentionaut/getting-started/),
+> then read [how the stimulation demos work](https://ascientist.github.io/sentionaut/models/demos/).
 
-- **Implant** (electrode geometry + pose): retinal `argusii`, `alphaims`,
-  `alphaams`, `prima`, and a configurable dense `grid`; cortical `orion`,
-  `cortivis`, `icvp`, `neuralink`.
-- **Topography** (visual-field map): retinal Jansonius axon map, cortical
-  `Polimeni2006Map` (dva <-> cortex, split hemispheres, cortical magnification),
-  plus an optional `neuropythy` MRI-derived map (lazy, falls back to Polimeni).
-- **PerceptModel**: retinal `axonmap` (`BiphasicAxonMapTorch`), cortical
-  `scoreboard` (`ScoreboardTorch`), cortical `dynaphos` (`DynaphosTorch`).
+<table>
+  <tr>
+    <td align="center" width="33%">
+      <a href="https://ascientist.github.io/sentionaut/models/axonmap/"><img src="docs/assets/demos/axonmap_sequence.gif" alt="Axon map stimulation sequence"></a><br>
+      <sub><b><a href="https://ascientist.github.io/sentionaut/models/axonmap/">Axon map</a></b> · retinal</sub>
+    </td>
+    <td align="center" width="33%">
+      <a href="https://ascientist.github.io/sentionaut/models/scoreboard/"><img src="docs/assets/demos/scoreboard_sequence.gif" alt="Scoreboard stimulation sequence"></a><br>
+      <sub><b><a href="https://ascientist.github.io/sentionaut/models/scoreboard/">Scoreboard</a></b> · cortical</sub>
+    </td>
+    <td align="center" width="33%">
+      <a href="https://ascientist.github.io/sentionaut/models/dynaphos/"><img src="docs/assets/demos/dynaphos_sequence.gif" alt="Dynaphos stimulation sequence"></a><br>
+      <sub><b><a href="https://ascientist.github.io/sentionaut/models/dynaphos/">Dynaphos</a></b> · cortical</sub>
+    </td>
+  </tr>
+</table>
+<p align="center"><sub>One fixed zone of electrodes, one stimulation sequence, three phosphene models. <a href="https://ascientist.github.io/sentionaut/models/demos/">How to read these clips →</a></sub></p>
+
+## Highlights
+
+- **Swappable components.** Implant, topography and percept model are
+  independent axes of a single `Config`: 9 implants (Argus II, Alpha IMS/AMS,
+  PRIMA, grid; Orion, Cortivis, ICVP, Neuralink), retinal and cortical maps.
+- **Differentiable physics on GPU.** CUDA, Apple MPS or CPU, with gradients
+  through every model. Parity with pulse2percept 0.9.0 to within 3e-5 max-abs error
+  ([details](https://ascientist.github.io/sentionaut/user-guide/#parity-with-pulse2percept)).
+- **Learned world models.** A conditioned ViT-style
+  [world model](https://ascientist.github.io/sentionaut/models/world-model/)
+  trained on simulator transitions, evaluated against per-model specialists,
+  plus a distilled [axon-map world model](https://ascientist.github.io/sentionaut/models/axonmap-world/).
+- **Closed-loop control benchmarks.**
+  [NeuroStim](https://ascientist.github.io/sentionaut/neurostim/) environments
+  with baselines from bandits to PPO-Lagrangian, and
+  [image targets](https://ascientist.github.io/sentionaut/neurostim-percept/)
+  learned through a world model.
+
+## Installation
+
+Sentionaut uses [uv](https://docs.astral.sh/uv/) and Python 3.11+.
+
+```bash
+git clone https://github.com/ascientist/sentionaut.git
+cd sentionaut
+make setup        # uv sync --extra dev
+```
+
+## Quickstart
 
 ```python
 import torch
@@ -35,42 +98,36 @@ from sentionaut.core.registry import build_components
 from sentionaut.core.base import Action
 
 cfg = Config(model="axonmap", implant="argusii", xrange=(-8, 8), yrange=(-8, 8), xystep=0.5)
-implant, topo, model = build_components(cfg)        # picks MPS if available
+implant, topo, model = build_components(cfg)        # CUDA → MPS → CPU
 amp = torch.zeros(implant.n_electrodes); amp[20] = 2.0
 percept = model.forward(Action(amp=amp,
                                freq=torch.full_like(amp, 30.0),
                                phase_dur=torch.full_like(amp, 0.45)))
 ```
 
-### Action / State schema
+Swap `model="scoreboard"` or `"dynaphos"` with a cortical implant to change
+the physics. Action fields, amplitude units and the state schema are in the
+[User guide](https://ascientist.github.io/sentionaut/user-guide/#action-and-state-schema).
 
-- `Action`: per-electrode `amp` / `freq` / `phase_dur` / `delay`, model-level
-  spatial params (`rho`, `axlambda`), and an implant `Pose` (translation +
-  rotation). Unused fields are ignored per model.
-- `State`: percept image `(H, W)` plus optional temporal channels in `aux`
-  (Dynaphos threads activation `A` and charge trace `Q` across `step`; Axon Map
-  and Scoreboard carry a fading brightness field via `FadingTemporal`).
+## Models
 
-### Amplitude units
+| Model | Tissue | Paper | Docs |
+| --- | --- | --- | --- |
+| Axon map | retinal | Granley & Beyeler 2021 | [page](https://ascientist.github.io/sentionaut/models/axonmap/) |
+| Scoreboard | cortical | Beyeler et al. 2019 | [page](https://ascientist.github.io/sentionaut/models/scoreboard/) |
+| Dynaphos | cortical | van der Grinten et al. 2024 | [page](https://ascientist.github.io/sentionaut/models/dynaphos/) |
+| World model | multi | learned | [page](https://ascientist.github.io/sentionaut/models/world-model/) |
+| Axon-map world model | retinal | distilled from axon map | [page](https://ascientist.github.io/sentionaut/models/axonmap-world/) |
 
-| model | `Action.amp` units | typical range |
-| --- | --- | --- |
-| axonmap | × threshold (unitless) | 0.5–3.0 |
-| scoreboard | µA | 50–300 |
-| dynaphos | µA | 50–300 |
+Every model maps electrode stimulation to a visual percept (`brain2vision`, see
+[Nomenclature](https://ascientist.github.io/sentionaut/nomenclature/)). Full
+citations: [References](https://ascientist.github.io/sentionaut/references/).
 
-Dataset generation and the Streamlit demo use these bands; parity tests keep
-their own fixed values.
+## Closed-loop control
 
-## NeuroStim: closed-loop control toy
-
-`sentionaut.neurostim` is a small constrained POMDP for closed-loop
-neurostimulation. It has 3 latent neural dimensions, 4 electrodes with an
-unknown overlapping recruitment matrix (a new "patient" per episode),
-adaptation, optional delay, drift and partial observation, and charge and
-adaptation constraints. Baselines range from a bandit through online
-system identification and a privileged oracle to PPO, PPO-Lagrangian and
-supervised DAgger imitation of the oracle.
+`sentionaut.neurostim` frames stimulation as control: find the pulses that
+drive a patient's neural state to a target, when the patient is unknown,
+drifts and is only partly observed.
 
 ```python
 from sentionaut.neurostim import make
@@ -79,134 +136,54 @@ obs, info = env.reset(seed=0)
 obs, r, terminated, truncated, info = env.step(env.action_space.sample())
 ```
 
-Tutorial: `make neurostim` (see [docs/neurostim.md](docs/neurostim.md)).
+| Tutorial | Command | Docs |
+| --- | --- | --- |
+| Canonical formulation: random drifting linear systems, exact baselines | `make neurostim-canonical` | [read](https://ascientist.github.io/sentionaut/neurostim-formulation/) |
+| NeuroStim toy CMDP: bandit → system ID → PPO-Lagrangian → DAgger | `make neurostim` | [read](https://ascientist.github.io/sentionaut/neurostim/) |
+| NeuroStim-Percept: MNIST targets learned through a world model | `make neurostim-percept` | [read](https://ascientist.github.io/sentionaut/neurostim-percept/) |
 
-`make neurostim-canonical` runs the canonical formulation. It strips the
-problem down to adaptive tracking of random, drifting linear dynamical
-systems, with exactly solvable baselines (see
-[docs/neurostim-formulation.md](docs/neurostim-formulation.md)).
+## Common tasks
 
-`make neurostim-percept` runs the image version. MNIST digits are the
-targets. The neural state is the code space of a frozen autoencoder, and a
-stimulation policy is learned by backpropagating a reconstruction loss
-through a learned world model, for fixed and random patients (see
-[docs/neurostim-percept.md](docs/neurostim-percept.md)).
+| Task | Command |
+| --- | --- |
+| Interactive Streamlit demo | `make demo` |
+| Render model animations / doc demos | `make animate MODEL=all` / `make demos` |
+| Generate a world-model dataset | `make world WORLD_DATASET=data/world.h5` |
+| Train / ablate the learned world model | `make train` / `make ablate` |
+| Run fast tests (incl. pulse2percept parity) | `make test` |
+| Lint and format check | `make lint` / `make format` |
+
+Options, outputs and SLURM launchers for cluster runs are described in the
+[User guide](https://ascientist.github.io/sentionaut/user-guide/#common-tasks).
 
 ## Documentation
 
-Browse on GitHub: [docs/index.md](docs/index.md).
+The full documentation lives at
+**[ascientist.github.io/sentionaut](https://ascientist.github.io/sentionaut/)**
+and is rebuilt from [`docs/`](docs/index.md) on every push to `main`.
 
-```bash
-make docs         # build → site/
-make docs-serve   # preview on localhost:8000
-```
-
-Every push to `main` rebuilds the Zensical site into the `gh-pages` branch.
-GitHub Pages serves it at
-[ascientist.github.io/sentionaut](https://ascientist.github.io/sentionaut/)
-(Settings → Pages → Deploy from a branch → `gh-pages` / root).
-
-## Setup
-
-```bash
-make setup        # uv sync --extra dev
-```
-
-Everything runs through `uv` / `uv run`.
-
-## Parity with pulse2percept
-
-`uv run pytest -m "not slow"` checks numerical parity against pulse2percept
-0.9.0 on small subsampled grids. Measured max-abs errors:
-
-| model | error vs pulse2percept |
+| Page | What it covers |
 | --- | --- |
-| Biphasic Axon Map | ~6e-8 (effectively exact) |
-| Cortical Scoreboard | ~3e-5 (peaks ~30) |
-| Cortical Dynaphos | ~2e-7 per frame |
+| [Getting started](https://ascientist.github.io/sentionaut/getting-started/) | Install and a first percept |
+| [User guide](https://ascientist.github.io/sentionaut/user-guide/) | Schema, workflows, parity, cluster runs, package layout |
+| [Stimulation demos](https://ascientist.github.io/sentionaut/models/demos/) | What the demo clips show, step by step |
+| [Model catalog](https://ascientist.github.io/sentionaut/models/) | One page per model, with equations and papers |
+| [Canonical formulation](https://ascientist.github.io/sentionaut/neurostim-formulation/) | The closed-loop stimulation problem, stated precisely |
+| [Nomenclature](https://ascientist.github.io/sentionaut/nomenclature/) | How models are classified by modality |
 
-## Animations (local deliverable)
+Build it locally with `make docs` (→ `site/`) or preview with `make docs-serve`
+(→ `localhost:8000`).
 
-```bash
-make animate MODEL=all OUTDIR=artifacts
-```
-
-Renders one dual-panel (percept | tissue-geometry) clip per physics model on
-MPS: the Axon Map sweeps `rho`/`axlambda` and translates the array; the cortical
-Scoreboard and Dynaphos sweep the implant to expose cortical-magnification growth
-(Dynaphos also shows temporal charge buildup). Outputs go to `artifacts/`.
-
-```bash
-make demos
-```
-
-Renders the documentation demos: the implant stays fixed and one zone of
-neighbouring electrodes receives a stimulation sequence (single electrodes,
-pairs, an amplitude ramp, then a pulse train). The GIFs are written to
-`docs/assets/demos/` and shown on each model page (`docs/models/*.md`).
-
-## Interactive demo
-
-```bash
-make demo         # streamlit run src/sentionaut/demo_app.py
-```
-
-Pick implant / model / grid and sweep action params; left panel renders the
-percept, right panel the tissue schematic.
-
-## World-model dataset
-
-```bash
-make world WORLD_DATASET=data/world.h5 EPISODES=256 SEQ_LEN=16
-```
-
-Produces a combined multi-config HDF5 of `(config_id, episode_id, s_t, a_t,
-s_{t+1})` transitions. Dynaphos rows include rasterized `aux_t` (A/Q maps);
-axonmap/scoreboard aux channels are zero-padded. Metadata records `dt_ms` and
-per-config `percept_scale` for normalization. Use `--silent-tail` for zero-drive
-fade steps after each pulse.
-
-## Learned unified world model + ablation
-
-`UnifiedWorldModel` is a ViT-style **transformer** (no convolutions): a linear
-patch embedding + 2D sinusoidal positional embeddings, a multi-head
-self-attention encoder, and a linear patch-unembedding head. It is conditioned on
-percept-model id, implant id, and topography params via prepended conditioning
-tokens **and** FiLM. A `mode` switch collapses the categorical conditioning to
-train per-model **specialists** (the ablation baseline) from the identical
-architecture, or **shared_trunk** (shared encoder, per-model output heads).
-Input is 3-channel (percept + Dynaphos A/Q maps; aux zero-padded otherwise).
-Val-only eval holds out entire `config_id`s. Defaults are small and configurable (`dim`, `depth`, `heads`,
-`patch_size`) so the smoke tests run on the M1.
-
-```bash
-make train  WORLD_DATASET=data/world.h5
-make ablate WORLD_DATASET=data/world.h5
-```
-
-Locally only the wiring is proven (single-batch training step + single-batch
-inference, see `tests/test_learned_smoke.py`); full training/ablation runs on the
-cluster.
-
-## Scaling / cluster
-
-Every size knob is config-driven (grid range/step, electrode count, episodes,
-batch size, epochs, device) with small local defaults. SLURM launchers for the
-Digital Research Alliance of Canada live in `scripts/` (`gen_dataset.sh`,
-`train_unified.sh`, `ablate.sh`), all using `uv run`.
-
-## Layout
+## Project layout
 
 ```
-src/sentionaut/
-  core/        interfaces, config, registry, device
-  topography/  axon_map (retinal), cortical (Polimeni2006 torch port)
-  implants/    electrode geometries as tensors
-  models/      effects, fading, axonmap, scoreboard, dynaphos
-  learned/     dataset, model (UnifiedWorldModel), metrics, train + ablation
-  calibrate.py subject rho/axlambda grid search + JSON sidecar
-  world.py     WorldModel f(s_t, a_t) -> s_{t+1}
-  generate.py  multi-config dataset generation
-  animate.py   per-model animations
-  demo_app.py  Streamlit demo
+src/sentionaut/   core, implants, topography, models, learned, neurostim
+examples/         NeuroStim tutorials (runnable scripts, # %% cells)
+docs/             documentation source (Zensical)
+configs/          training and ablation configs
+scripts/          SLURM launchers for cluster runs
+tests/            parity and smoke tests
 ```
+
+Module-level detail: [User guide → Package layout](https://ascientist.github.io/sentionaut/user-guide/#package-layout).
+Design decisions and sourced parameter values: [`DEBRIEF.md`](DEBRIEF.md).

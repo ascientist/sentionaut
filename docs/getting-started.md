@@ -1,6 +1,6 @@
 # Getting started
 
-[Home](index.md) · [Getting started](getting-started.md) · [Nomenclature](nomenclature.md) · [Models](models/index.md) · [References](references.md)
+[Home](index.md) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Nomenclature](nomenclature.md) · [Models](models/index.md) · [References](references.md)
 
 ## Install
 
@@ -34,7 +34,10 @@ Swap `model` / `implant` in `Config` to try scoreboard or dynaphos. See the
 
 ## Docs site
 
-Read these pages on GitHub from [docs/index.md](index.md). Local preview:
+The documentation is published at
+[ascientist.github.io/sentionaut](https://ascientist.github.io/sentionaut/) and
+rebuilt on every push to `main`. The same pages read on GitHub under
+[`docs/`](https://github.com/ascientist/sentionaut/tree/main/docs). Local preview:
 
 ```bash
 make docs         # uv run zensical build → site/
@@ -43,6 +46,9 @@ make docs-serve   # live preview on localhost:8000
 
 ## Next
 
+- [User guide](user-guide.md) — schema, workflows, parity, cluster runs
+- [Stimulation demos](models/demos.md) — what each model predicts, step by step
+- [NeuroStim formulation](neurostim-formulation.md) — the closed-loop control problem
 - [Nomenclature](nomenclature.md) — how models are classified
 - [Models](models/index.md) — one page per model
 - [References](references.md) — full citations

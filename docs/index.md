@@ -4,7 +4,7 @@
 
 # Sentionaut
 
-[Home](index.md) · [Getting started](getting-started.md) · [Nomenclature](nomenclature.md) · [Models](models/index.md) · [References](references.md)
+[Home](index.md) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Nomenclature](nomenclature.md) · [Models](models/index.md) · [References](references.md)
 
 Sentionaut is a modular, GPU-native PyTorch framework for **prosthetic vision**.
 It reimplements pulse2percept's retinal and cortical phosphene models as
@@ -15,6 +15,18 @@ transitions.
 Where [pulse2percept](https://pulse2percept.readthedocs.io) is the CPU reference
 simulator, Sentionaut is the differentiable, world-model-facing layer on top of
 the same physics.
+
+## Where to start
+
+| If you want to… | Read |
+| --- | --- |
+| Compute your first percept | [Getting started](getting-started.md) |
+| See what each model predicts | [Stimulation demos](models/demos.md) |
+| Generate data, train, reproduce results | [User guide](user-guide.md) |
+| Pick a model and its paper | [Model catalog](models/index.md) |
+| Work on closed-loop stimulation | [Canonical formulation](neurostim-formulation.md) |
+
+Source code: [github.com/ascientist/sentionaut](https://github.com/ascientist/sentionaut).
 
 ## Components
 

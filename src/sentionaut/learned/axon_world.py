@@ -517,7 +517,7 @@ def distill_online(
     return history
 
 
-@click.command()
+@click.command(epilog="Docs: https://ascientist.github.io/sentionaut/models/axonmap-world/")
 @click.option("--dataset", "dataset_path", type=click.Path(path_type=Path), required=True)
 @click.option("--epochs", type=int, default=1, show_default=True)
 @click.option("--batch-size", type=int, default=8, show_default=True)

@@ -1,5 +1,8 @@
 # Sentionaut implementation debrief
 
+> User-facing documentation: [ascientist.github.io/sentionaut](https://ascientist.github.io/sentionaut/). This file
+> is the implementation log behind it.
+
 Running log of non-obvious decisions, sourced parameter values, deferrals, and
 delivery outcome. Workspace root: `/Users/jacoblavoie/git_repo/retinawm`; the
 Python project lives in the nested `retinawm/` directory and the package is

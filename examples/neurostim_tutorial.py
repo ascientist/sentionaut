@@ -9,6 +9,8 @@ are written to ``--outdir`` (default ``docs/assets/neurostim``).
     o_t     = C x_t + eps_t
     r_t     = -||x_{t+1} - x*||^2 - w_E ||a_t||^2 - w_D ||a_t - a_{t-1}||^2
     s.t.      sum_i |a_t^i| <= q_max,   max_i h_t^i <= h_max
+
+Docs: https://ascientist.github.io/sentionaut/neurostim/
 """
 
 # %%
