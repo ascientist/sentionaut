@@ -396,15 +396,15 @@ def load_axon_world(path: str | Path, device: torch.device | str | None = None) 
     return model.to(device or torch.device("cpu")).eval()
 
 
-def _resolve_weights(repo_id: str, filename: str, *, revision: str | None, token: str | None) -> Path:
+def _resolve_weights(
+    repo_id: str, filename: str, *, revision: str | None, token: str | None
+) -> Path:
     local = Path(repo_id)
     if local.is_dir():
         return local / filename
     from huggingface_hub import hf_hub_download
 
-    return Path(
-        hf_hub_download(repo_id=repo_id, filename=filename, revision=revision, token=token)
-    )
+    return Path(hf_hub_download(repo_id=repo_id, filename=filename, revision=revision, token=token))
 
 
 def push_checkpoint(
