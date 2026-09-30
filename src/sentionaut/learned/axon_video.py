@@ -276,36 +276,62 @@ def _phases(amp: np.ndarray) -> list[str]:
     return labels
 
 
+_ACT_KEYS = ("amp", "freq", "phase_dur", "rho", "axlambda")
+
+
+def _val_stack(dataset_path: Path) -> dict[str, torch.Tensor]:
+    """Every held-out episode as one ``(episodes, T, ...)`` batch."""
+    from .axon_report import _dataset_meta, _rows_batch, _val_episodes
+
+    scale = _dataset_meta(dataset_path)["scale"]
+    episodes = list(_val_episodes(dataset_path).values())
+    # ponytail: stream episodes share one length; ragged ones are cut to the shortest.
+    n = min(len(rows) for rows in episodes)
+    parts = [_rows_batch(dataset_path, rows[:n], scale) for rows in episodes]
+    return {k: torch.stack([p[k] for p in parts]) for k in parts[0]}
+
+
+def _chunks(stack: dict, size: int, device):
+    for i in range(0, stack["amp"].shape[0], size):
+        yield {k: v[i : i + size].to(device) for k, v in stack.items()}
+
+
 @torch.no_grad()
-def fade_constant(model, dataset_path: Path, device, min_signal: float = 0.05) -> dict:
+def _teacher_forced(model: AxonVideoWorld, ep: dict) -> torch.Tensor:
+    """Next-frame prediction at every ``t`` from the teacher's own last ``context`` frames."""
+    c, t_len = model.context, ep["amp"].shape[1]
+    acts = [ep[k] for k in _ACT_KEYS]
+    head = model(ep["s_t"][:, :c], *(a[:, :c] for a in acts))
+    tail = [
+        model(ep["s_t"][:, t - c + 1 : t + 1], *(a[:, t - c + 1 : t + 1] for a in acts))[:, -1]
+        for t in range(c, t_len)
+    ]
+    return torch.cat([head, torch.stack(tail, dim=1)], dim=1) if tail else head
+
+
+@torch.no_grad()
+def fade_constant(
+    model, dataset_path: Path, device, min_signal: float = 0.05, chunk: int = 32
+) -> dict:
     """Effective fade time constant on silent steps, teacher-forced so only the fade is tested.
 
     For an off frame the teacher is ``B' = (1 - dt/tau) B``, so ``r = <B', B> / <B, B>`` gives
     ``tau = dt / (1 - r)``. The same ratio on the model's prediction is its learned ``tau``.
     """
-    from .axon_report import _dataset_meta, _val_episodes
-
-    scale = _dataset_meta(dataset_path)["scale"]
     ratios_s, ratios_t = [], []
-    for rows in _val_episodes(dataset_path).values():
-        ep = _episode_arrays(dataset_path, rows, scale)
-        frames = ep["s_t"].to(device)
-        target = ep["s_tp1"]
-        acts = [ep[k].to(device) for k in ("amp", "freq", "phase_dur", "rho", "axlambda")]
-        for t in range(len(rows)):
-            if ep["amp"][0, t].any() or float(frames[0, t].max()) <= min_signal:
-                continue
-            lo = max(0, t + 1 - model.context)
-            pred = model(frames[:, lo : t + 1], *(a[:, lo : t + 1] for a in acts))[0, -1].cpu()
-            now = frames[0, t].cpu()
-            denom = float((now * now).sum())
-            ratios_s.append(float((pred * now).sum()) / denom)
-            ratios_t.append(float((target[0, t] * now).sum()) / denom)
+    for ep in _chunks(_val_stack(Path(dataset_path)), chunk, device):
+        pred = _teacher_forced(model, ep)
+        now = ep["s_t"]
+        silent = ~(ep["amp"] != 0).any(dim=-1) & (now.amax(dim=(-2, -1)) > min_signal)
+        denom = (now * now).sum(dim=(-2, -1))
+        ratios_s += ((pred * now).sum(dim=(-2, -1)) / denom.clamp_min(1e-12))[silent].tolist()
+        ratios_t += ((ep["s_tp1"] * now).sum(dim=(-2, -1)) / denom.clamp_min(1e-12))[
+            silent
+        ].tolist()
     dt = model.dt_ms
 
     def tau(r):
-        r = np.asarray(r)
-        return dt / np.clip(1.0 - r, 1e-6, None)
+        return dt / np.clip(1.0 - np.asarray(r), 1e-6, None)
 
     tau_s, tau_t = tau(ratios_s), tau(ratios_t)
     return {
@@ -319,35 +345,27 @@ def fade_constant(model, dataset_path: Path, device, min_signal: float = 0.05) -
 
 
 @torch.no_grad()
-def horizon_errors(model, dataset_path: Path, device, baseline=None) -> dict:
+def horizon_errors(model, dataset_path: Path, device, baseline=None, chunk: int = 32) -> dict:
     """Free-running MSE by frame index over whole held-out episodes, longer than the context."""
-    from .axon_report import _dataset_meta, _val_episodes
-
-    scale = _dataset_meta(dataset_path)["scale"]
-    per_t: list[list[float]] = []
-    per_t_base: list[list[float]] = []
-    for rows in _val_episodes(dataset_path).values():
-        ep = _episode_arrays(dataset_path, rows, scale)
-        acts = [ep[k].to(device) for k in ("amp", "freq", "phase_dur", "rho", "axlambda")]
-        pred = model.rollout(ep["s_t"][:, 0].to(device), *acts)[0].cpu()
-        err = ((pred - ep["s_tp1"][0]) ** 2).mean(dim=(1, 2)).tolist()
-        for t, e in enumerate(err):
-            if t >= len(per_t):
-                per_t.append([])
-                per_t_base.append([])
-            per_t[t].append(e)
+    errs, base_errs = [], []
+    for ep in _chunks(_val_stack(Path(dataset_path)), chunk, device):
+        acts = [ep[k] for k in _ACT_KEYS]
+        pred = model.rollout(ep["s_t"][:, 0], *acts)
+        errs.append(((pred - ep["s_tp1"]) ** 2).mean(dim=(-2, -1)).cpu())
         if baseline is not None:
-            b = _markov_rollout(baseline, ep, device)
-            for t, e in enumerate(((b - ep["s_tp1"][0]) ** 2).mean(dim=(1, 2)).tolist()):
-                per_t_base[t].append(e)
+            base = _markov_rollout(baseline, ep, device)
+            base_errs.append(((base - ep["s_tp1"]) ** 2).mean(dim=(-2, -1)).cpu())
+    err = torch.cat(errs)
     out = {
-        "mse_by_frame": [float(np.mean(v)) for v in per_t],
-        "mse": float(np.mean([e for v in per_t for e in v])),
-        "n_episodes": len(per_t[0]) if per_t else 0,
+        "mse_by_frame": err.mean(dim=0).tolist(),
+        "mse": float(err.mean()),
+        "n_episodes": int(err.shape[0]),
+        "frames": int(err.shape[1]),
     }
     if baseline is not None:
-        out["baseline_mse_by_frame"] = [float(np.mean(v)) for v in per_t_base]
-        out["baseline_mse"] = float(np.mean([e for v in per_t_base for e in v]))
+        base = torch.cat(base_errs)
+        out["baseline_mse_by_frame"] = base.mean(dim=0).tolist()
+        out["baseline_mse"] = float(base.mean())
     return out
 
 
@@ -355,12 +373,10 @@ def _markov_rollout(model: AxonMapWorld, ep: dict, device) -> torch.Tensor:
     brightness = ep["s_t"][:, 0].to(device)
     out = []
     for t in range(ep["amp"].shape[1]):
-        brightness = model.predict_next(
-            brightness,
-            *(ep[k][:, t].to(device) for k in ("amp", "freq", "phase_dur", "rho", "axlambda")),
-        )
-        out.append(brightness[0].cpu())
-    return torch.stack(out)
+        acts = (ep[k][:, t].to(device) for k in _ACT_KEYS)
+        brightness = model.predict_next(brightness, *acts)
+        out.append(brightness)
+    return torch.stack(out, dim=1)
 
 
 def _episode_videos(model, dataset_path: Path, device, n: int, baseline=None):
@@ -369,10 +385,12 @@ def _episode_videos(model, dataset_path: Path, device, n: int, baseline=None):
     scale = _dataset_meta(dataset_path)["scale"]
     for ep_id, rows in list(_val_episodes(dataset_path).items())[:n]:
         ep = _episode_arrays(dataset_path, rows, scale)
-        acts = [ep[k].to(device) for k in ("amp", "freq", "phase_dur", "rho", "axlambda")]
+        acts = [ep[k].to(device) for k in _ACT_KEYS]
         with torch.no_grad():
             student = model.rollout(ep["s_t"][:, 0].to(device), *acts)[0].cpu().numpy()
-            base = _markov_rollout(baseline, ep, device).numpy() if baseline is not None else None
+            base = None
+            if baseline is not None:
+                base = _markov_rollout(baseline, ep, device)[0].cpu().numpy()
         yield ep_id, ep["s_tp1"][0].numpy(), student, base, _phases(ep["amp"][0].numpy())
 
 
@@ -425,7 +443,8 @@ def plot_frames(model, dataset_path, out_path, device, n_cols: int = 10) -> Path
 
     ep_id, teacher, student, _, phases = next(_episode_videos(model, Path(dataset_path), device, 1))
     idx = np.linspace(0, len(phases) - 1, n_cols).round().astype(int)
-    vmax = max(float(teacher.max()), float(student.max()), 1e-6)
+    # A single hot pixel would otherwise set the scale and leave the rest black.
+    vmax = max(float(np.percentile(teacher, 99.9)), 1e-6)
     emax = max(float(np.abs(student - teacher).max()), 1e-6)
     fig, axes = plt.subplots(3, n_cols, figsize=(1.6 * n_cols, 5.2))
     for c, t in enumerate(idx):
@@ -558,6 +577,8 @@ def cli():
 @click.option("--patch-size", type=int, default=4, show_default=True)
 @click.option("--context-noise", type=float, default=0.02, show_default=True)
 @click.option("--num-workers", type=int, default=0, show_default=True)
+@click.option("--train-stride", type=int, default=8, show_default=True)
+@click.option("--val-stride", type=int, default=16, show_default=True)
 @click.option("--implant", "implant_name", type=str, default="argusii", show_default=True)
 @click.option("--device", type=str, default=None)
 def train(dataset_path, ckpt_path, timing_path, device, **kwargs):

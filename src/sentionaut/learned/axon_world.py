@@ -379,17 +379,21 @@ def distill_hdf5(
     bf16: bool = False,
     model_factory: Callable[[tuple, int, float], nn.Module] | None = None,
     loss_fn: Callable[[nn.Module, dict], torch.Tensor] | None = None,
+    train_stride: int = 1,
+    val_stride: int = 1,
 ) -> dict:
     """Train on axon-map transitions. Default is ``AxonMapWorld``, K-step MSE after the exact fade.
 
     ``model_factory(grid, n_electrodes, dt_ms)`` and ``loss_fn(model, batch)`` swap in
-    another student over the same windows, checkpoints, and timings.
+    another student over the same windows, checkpoints, and timings. A stride keeps every
+    ``stride``-th K-step window; windows overlap by ``K - 1`` frames otherwise.
     """
     dataset_path = Path(dataset_path)
     device = device or get_device()
     if device.type == "cuda":
         torch.cuda.reset_peak_memory_stats()
     train_w, val_w, scale, grid, n_elec, dt_ms = _episode_windows(dataset_path, rollout_k)
+    train_w, val_w = train_w[:: max(1, train_stride)], val_w[:: max(1, val_stride)]
     if model_factory is None:
         model = AxonMapWorld(
             grid, n_elec, dim=dim, depth=depth, heads=heads, patch_size=patch_size, dt_ms=dt_ms
@@ -570,6 +574,8 @@ def distill_online(
 @click.option("--implant", "implant_name", type=str, default="argusii", show_default=True)
 @click.option("--num-workers", type=int, default=0, show_default=True)
 @click.option("--bf16", is_flag=True, default=False)
+@click.option("--train-stride", type=int, default=1, show_default=True)
+@click.option("--val-stride", type=int, default=1, show_default=True)
 def cli(
     dataset_path,
     epochs,
@@ -584,6 +590,8 @@ def cli(
     implant_name,
     num_workers,
     bf16,
+    train_stride,
+    val_stride,
 ):
     dev = get_device(device)
     if dev.type != "cuda" and device == "cuda":
@@ -602,6 +610,8 @@ def cli(
         depth=depth,
         num_workers=num_workers,
         bf16=bf16,
+        train_stride=train_stride,
+        val_stride=val_stride,
     )
     click.echo(
         f"val_mse={out['val_mse']:.6f} samples_per_s={out['samples_per_s']:.2f} "
