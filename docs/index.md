@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/sentionaut-logo.jpg" alt="Sentionaut logo" width="420">
+</p>
+
 # Sentionaut
 
 [Home](index.md) · [Getting started](getting-started.md) · [Nomenclature](nomenclature.md) · [Models](models/index.md) · [References](references.md)
