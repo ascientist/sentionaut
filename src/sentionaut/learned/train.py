@@ -84,7 +84,8 @@ def train(
     device = device or get_device()
     full = WorldTransitionDataset(dataset_path)
     train_ds, val_ds = train_val_split(full)
-    loader = DataLoader(train_ds, batch_size=scale.batch_size, shuffle=True)
+    pin = device.type == "cuda"
+    loader = DataLoader(train_ds, batch_size=scale.batch_size, shuffle=True, pin_memory=pin)
     model = build_model(full, mode=mode).to(device)
     opt = torch.optim.Adam(model.parameters(), lr=scale.lr)
     history = []

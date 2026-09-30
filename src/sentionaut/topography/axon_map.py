@@ -10,6 +10,7 @@ and ``axlambda`` remain differentiable runtime inputs to the torch model.
 from __future__ import annotations
 
 import hashlib
+import os
 import pickle
 from pathlib import Path
 
@@ -19,7 +20,9 @@ import torch
 from ..core.base import Topography
 from ..core.config import Config
 
-_CACHE_DIR = Path("data/axon_cache")
+
+def _cache_dir() -> Path:
+    return Path(os.environ.get("SENTIONAUT_AXON_CACHE", "data/axon_cache"))
 
 
 def _cache_key(config: Config) -> str:
@@ -67,8 +70,9 @@ class AxonMapTopography(Topography):
 
     @classmethod
     def build(cls, config: Config, device: torch.device) -> "AxonMapTopography":
-        _CACHE_DIR.mkdir(parents=True, exist_ok=True)
-        cache_path = _CACHE_DIR / f"axonmap_{_cache_key(config)}.pkl"
+        cache_dir = _cache_dir()
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        cache_path = cache_dir / f"axonmap_{_cache_key(config)}.pkl"
         if cache_path.exists():
             with open(cache_path, "rb") as fh:
                 blob = pickle.load(fh)

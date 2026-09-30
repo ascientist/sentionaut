@@ -44,6 +44,28 @@ class WorldTransitionDataset(Dataset):
             )
             self._has_aux = "aux_t" in h5["world"]
         self.indices = indices
+        self._h5 = None
+
+    def _file(self) -> h5py.File:
+        if self._h5 is None:
+            self._h5 = h5py.File(self.path, "r")
+        return self._h5
+
+    def close(self) -> None:
+        if self._h5 is not None:
+            self._h5.close()
+            self._h5 = None
+
+    def __del__(self) -> None:
+        try:
+            self.close()
+        except Exception:
+            pass
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state["_h5"] = None
+        return state
 
     def __len__(self) -> int:
         return len(self.indices) if self.indices is not None else self.n
@@ -62,23 +84,22 @@ class WorldTransitionDataset(Dataset):
 
     def __getitem__(self, i: int) -> dict:
         idx = self.indices[i] if self.indices is not None else i
-        with h5py.File(self.path, "r") as h5:
-            g = h5["world"]
-            cfg_idx = int(g["config_id"][idx])
-            cfg = self.configs[cfg_idx]
-            scale = self.percept_scale.get(cfg_idx, 1.0)
-            s_t = g["s_t"][idx].astype(np.float32) / scale
-            s_tp1 = g["s_tp1"][idx].astype(np.float32) / scale
-            if self._has_aux:
-                a_map = g["aux_t"][idx, 0].astype(np.float32) / scale
-                q_map = g["aux_t"][idx, 1].astype(np.float32) / scale
-            else:
-                a_map = q_map = np.zeros_like(s_t)
-            amp = g["amp"][idx]
-            freq = g["freq"][idx]
-            pdur = g["phase_dur"][idx]
-            rho = float(g["rho"][idx])
-            axl = float(g["axlambda"][idx])
+        g = self._file()["world"]
+        cfg_idx = int(g["config_id"][idx])
+        cfg = self.configs[cfg_idx]
+        scale = self.percept_scale.get(cfg_idx, 1.0)
+        s_t = g["s_t"][idx].astype(np.float32) / scale
+        s_tp1 = g["s_tp1"][idx].astype(np.float32) / scale
+        if self._has_aux:
+            a_map = g["aux_t"][idx, 0].astype(np.float32) / scale
+            q_map = g["aux_t"][idx, 1].astype(np.float32) / scale
+        else:
+            a_map = q_map = np.zeros_like(s_t)
+        amp = g["amp"][idx]
+        freq = g["freq"][idx]
+        pdur = g["phase_dur"][idx]
+        rho = float(g["rho"][idx])
+        axl = float(g["axlambda"][idx])
         stacked = np.stack([s_t, a_map, q_map], axis=0)
         action = np.concatenate([amp, freq, pdur, [rho, axl]]).astype(np.float32)
         return {
