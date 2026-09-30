@@ -1,0 +1,1220 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="GPU-native prosthetic vision world models, classified by modality.">
+      
+      
+      
+        <link rel="canonical" href="https://ascientist.github.io/sentionaut/neurostim-percept/">
+      
+      
+        <link rel="prev" href="../neurostim/">
+      
+      
+        <link rel="next" href="../references/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/favicon.png">
+      <meta name="generator" content="zensical-0.0.57">
+    
+    
+      
+        <title>NeuroStim-Percept: image targets through a world model - Sentionaut</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../assets/stylesheets/modern/main.5da3a30f.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../assets/stylesheets/modern/palette.812a03bb.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="red">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="Navigation"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#neurostim-percept-image-targets-through-a-world-model" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="./.." title="Sentionaut" class="md-header__button md-logo" aria-label="Sentionaut" data-md-component="logo">
+      
+  <img src="../assets/sentionaut-mark.png" alt="Sentionaut">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="Navigation">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Sentionaut
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              NeuroStim-Percept: image targets through a world model
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="red"  aria-hidden="true"  type="radio" name="__palette" id="__palette_0">
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="Search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/ascientist/sentionaut" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ascientist/sentionaut
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="./.." title="Sentionaut" class="md-nav__button md-logo" aria-label="Sentionaut" data-md-component="logo">
+      
+  <img src="../assets/sentionaut-mark.png" alt="Sentionaut">
+
+    </a>
+    Sentionaut
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ascientist/sentionaut" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ascientist/sentionaut
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Getting started
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../nomenclature/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Nomenclature
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Models
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  Models
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Models
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../models/demos/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Stimulation demos: how to read them
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../models/axonmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Axon map
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../models/axonmap-world/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  From the axon map to a world model
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../models/scoreboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Scoreboard
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../models/dynaphos/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Dynaphos
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../models/world-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  World model
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  NeuroStim (control)
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  NeuroStim (control)
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../neurostim-formulation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Canonical formulation
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../neurostim/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  NeuroStim: closed-loop control benchmark
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  NeuroStim-Percept: image targets through a world model
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  NeuroStim-Percept: image targets through a world model
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Pipeline
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fixed-vs-random-patients" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Fixed vs random patients
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tutorial" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Tutorial
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tutorial">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#results" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Results
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reading-the-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Reading the results
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#caveats-and-next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Caveats and next steps
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../references/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  References
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Pipeline
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fixed-vs-random-patients" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Fixed vs random patients
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tutorial" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Tutorial
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tutorial">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#results" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Results
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reading-the-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Reading the results
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#caveats-and-next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Caveats and next steps
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+  
+  
+
+
+<h1 id="neurostim-percept-image-targets-through-a-world-model">NeuroStim-Percept: image targets through a world model</h1>
+<p><a href="../">Home</a> · <a href="../getting-started/">Getting started</a> · <a href="../nomenclature/">Nomenclature</a> · <a href="../models/">Models</a> · <a href="../neurostim/">NeuroStim</a> · <a href="../references/">References</a></p>
+<p>In <a href="../neurostim/">NeuroStim</a> the target was a point in a 3-D latent space.
+Here it is an <strong>image</strong>. Stimulation drives a 16-D neural state, and a frozen
+decoder turns that state into a percept. The stimulation policy is learned by
+backpropagating a <strong>reconstruction loss</strong> through a <strong>learned world model</strong>,
+never through the brain itself. There is no RL.</p>
+<p>Source: <code>src/sentionaut/neurostim/percept.py</code> · Tutorial:
+<code>examples/neurostim_percept_tutorial.py</code> · Maths: <a href="../neurostim-formulation/">canonical
+formulation</a> (this tutorial is rung L5)</p>
+<h2 id="pipeline">Pipeline</h2>
+<p>```text
+target y ─► π(E(y), ctx) ─► a_{1:T} ─► brain ─► x_t ─► D(x_t)          (evaluation: true percept)
+                                  └──► W(z_0, ctx, a) ─► ẑ_t ─► D(ẑ_t)  (training: predicted percept)</p>
+<p>loss = Σ_{t ≥ 10} ‖D(ẑ_t) − y‖²  + λ · charge
+```</p>
+<table>
+<thead>
+<tr>
+<th>Part</th>
+<th>What it is</th>
+<th>Learned from</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>D</code>, <code>E</code></td>
+<td>MNIST autoencoder with a 16-D code: the neural state space and the percept readout (<code>brain2vision</code>)</td>
+<td>MNIST, then frozen</td>
+</tr>
+<tr>
+<td>Brain</td>
+<td>NeuroStim dynamics in that code space: <code>x_{t+1} = A x − αx³ + B diag(1/(1+λh)) tanh(a) + w</code>, 24 electrodes, adaptation, charge limit <code>Σ|a| ≤ 8</code></td>
+<td>– (ground truth, a black box)</td>
+</tr>
+<tr>
+<td><code>W</code> (world model)</td>
+<td>GRU. From the resting percept (and a patient context) it predicts the open-loop latent trajectory, decoded by <code>D</code></td>
+<td>observed (stimulation, percept) episodes only</td>
+</tr>
+<tr>
+<td><code>π</code> (policy)</td>
+<td>MLP: <code>E(y)</code> (+ context) → a 30-step, 24-electrode stimulation sequence; <code>tanh</code> bound and charge projection</td>
+<td>backprop through <code>W</code> on MNIST train images</td>
+</tr>
+<tr>
+<td>classifier</td>
+<td>frozen MLP on MNIST; the accuracy on percepts answers "is the digit recognisable?"</td>
+<td>MNIST</td>
+</tr>
+</tbody>
+</table>
+<p><code>W</code> is allowed to use <code>D</code>. The percept readout stands in for a known
+<code>brain2vision</code> model, like the repo's phosphene models. What <code>W</code> must learn
+is the patient-specific part: stimulation → neural state, including
+adaptation.</p>
+<h2 id="fixed-vs-random-patients">Fixed vs random patients</h2>
+<ul>
+<li><strong>Fixed patient.</strong> One <code>B</code>. <code>W</code> is fitted on 6 000 exploration episodes
+  (i.i.d. noise, held patterns, smooth drifts), then the policy is trained
+  through it. <strong>Round 2</strong> stimulates the true brain with the round-1 policy,
+  adds those episodes and refits <code>W</code> and <code>π</code>. The model has to be accurate
+  where the policy actually operates, and round 2 makes it so.</li>
+<li><strong>Random patients.</strong> A new <code>B</code> for every episode. A <strong>calibration sweep</strong>
+  pulses each electrode once from rest. The encoded percept changes, 24 × 16
+  numbers, form a noisy view of <code>B</code>. They condition <code>W</code> and <code>π</code> through a
+  <strong>hypernetwork</strong>: the patient multiplies the action (<code>B a</code>), so the context
+  emits the matrix the action is multiplied by. Concatenating the context
+  with the action failed (about 10 % accuracy).</li>
+<li><strong>Privileged reference <code>*</code>.</strong> The same policy trained by backprop through
+  the <strong>true</strong> brain. The gap between it and the world-model policy is what
+  the world model costs.</li>
+</ul>
+<h2 id="tutorial">Tutorial</h2>
+<p><code>bash
+uv run python examples/neurostim_percept_tutorial.py           # ~45 min, 4 CPU cores
+uv run python examples/neurostim_percept_tutorial.py --quick   # ~1 min smoke run</code></p>
+<p>Holding one random stimulation pattern: the percept forms within a few steps.
+Adaptation keeps building, but in 30 steps it stays well below <code>h_max</code>, so
+there is little visible fading.</p>
+<p><img alt="hold" src="../assets/neurostim/p1_hold.png" /></p>
+<p>World model vs true brain on stimulation sequences it never saw (open-loop
+from the resting percept):</p>
+<p><img alt="world model" src="../assets/neurostim/p2_world_model.png" /></p>
+<p>Percepts the true brain produces for held-out test digits (mean over the hold
+window):</p>
+<p><img alt="reconstructions" src="../assets/neurostim/p3_reconstructions.png" /></p>
+<p>One stimulation sequence and its percept over time (fixed patient). The
+policy barely stimulates for the first 9 steps and switches on at <code>t = 10</code>,
+exactly when the loss window starts. It learned to save charge and
+adaptation for the steps that are scored.</p>
+<p><img alt="sequence" src="../assets/neurostim/p4_sequence.png" /></p>
+<h3 id="results">Results</h3>
+<p>1 000 MNIST test digits, evaluated on the true brain. Random patients use
+1 000 held-out patients, one per digit. Pixel MSE and classifier accuracy are
+computed on the percept over the hold window (<code>t ≥ 10</code>). Charge is <code>Σ|a|</code>
+per step.</p>
+<table>
+<thead>
+<tr>
+<th>setting</th>
+<th>policy</th>
+<th style="text-align: right;">pixel MSE</th>
+<th style="text-align: right;">classifier accuracy</th>
+<th style="text-align: right;">charge</th>
+<th style="text-align: right;">h &gt; h_max</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>any</td>
+<td>ceiling D(E(y)) (latent reached exactly)</td>
+<td style="text-align: right;">0.0106</td>
+<td style="text-align: right;">0.950</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">0.000</td>
+</tr>
+<tr>
+<td>fixed patient</td>
+<td>no stimulation</td>
+<td style="text-align: right;">0.0738</td>
+<td style="text-align: right;">0.089</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">0.000</td>
+</tr>
+<tr>
+<td>fixed patient</td>
+<td>policy via world model (round 1)</td>
+<td style="text-align: right;">0.0156</td>
+<td style="text-align: right;">0.934</td>
+<td style="text-align: right;">4.42</td>
+<td style="text-align: right;">0.000</td>
+</tr>
+<tr>
+<td>fixed patient</td>
+<td>policy via world model (round 2)</td>
+<td style="text-align: right;">0.0143</td>
+<td style="text-align: right;">0.935</td>
+<td style="text-align: right;">4.35</td>
+<td style="text-align: right;">0.000</td>
+</tr>
+<tr>
+<td>fixed patient</td>
+<td>policy via true brain *</td>
+<td style="text-align: right;">0.0139</td>
+<td style="text-align: right;">0.929</td>
+<td style="text-align: right;">3.95</td>
+<td style="text-align: right;">0.000</td>
+</tr>
+<tr>
+<td>random patients</td>
+<td>no stimulation</td>
+<td style="text-align: right;">0.0738</td>
+<td style="text-align: right;">0.089</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">0.000</td>
+</tr>
+<tr>
+<td>random patients</td>
+<td>fixed-patient policy (no personalisation)</td>
+<td style="text-align: right;">0.1020</td>
+<td style="text-align: right;">0.103</td>
+<td style="text-align: right;">4.35</td>
+<td style="text-align: right;">0.000</td>
+</tr>
+<tr>
+<td>random patients</td>
+<td>world model + calibration context</td>
+<td style="text-align: right;">0.0470</td>
+<td style="text-align: right;">0.601</td>
+<td style="text-align: right;">2.51</td>
+<td style="text-align: right;">0.000</td>
+</tr>
+<tr>
+<td>random patients</td>
+<td>true brain + calibration context *</td>
+<td style="text-align: right;">0.0417</td>
+<td style="text-align: right;">0.664</td>
+<td style="text-align: right;">1.91</td>
+<td style="text-align: right;">0.000</td>
+</tr>
+</tbody>
+</table>
+<h2 id="reading-the-results">Reading the results</h2>
+<ul>
+<li><strong>Fixed patient: the world model is almost free.</strong> A policy trained only
+  through <code>W</code> reaches 93.4 % accuracy (MSE 0.0156). Round 2 on-policy data
+  brings MSE to 0.0143, against 0.0139 for the privileged reference. All
+  three sit close to the autoencoder ceiling <code>D(E(y))</code> (95.0 %, MSE 0.0106),
+  the best any stimulation can do.</li>
+<li><strong>Random patients: personalisation is the bottleneck, not the world
+  model.</strong> The world-model policy reaches 60.1 %, its privileged counterpart
+  66.4 %, and both are far below the fixed-patient 93 %. One network has to map
+  every calibration record to a good stimulation, in effect an amortised
+  pseudo-inverse of <code>B</code>. A policy tuned to one patient is worse than no
+  stimulation on another (MSE 0.102 vs 0.074).</li>
+<li><strong>Adaptation hardly binds here</strong> (<code>h &gt; h_max</code> stays at 0). The charge limit
+  and the 30-step horizon keep drive modest. Longer holds or a lower
+  <code>h_max</code> would make it bind.</li>
+</ul>
+<h2 id="caveats-and-next-steps">Caveats and next steps</h2>
+<ul>
+<li>The policy is <strong>open-loop</strong>: one sequence per target. A closed-loop
+  policy, feeding back observed percepts, would correct drift and model
+  error online.</li>
+<li><code>W</code> gets <code>D</code> for free. Learning a separate decoder from images alone is a
+  harder and more honest setting. Then <code>W</code> becomes a small image world
+  model, like the repo's learned transformer.</li>
+<li>The random-patient gap should shrink with more calibration (repeated or
+  graded pulses), per-patient fine-tuning of <code>π</code> through <code>W</code> (test-time
+  optimisation), or explicit identification of <code>B</code> from the probe. Each is
+  a one-function change.</li>
+<li>On a real patient you cannot backprop through the brain. That is why only
+  the world-model rows are methods; the <code>*</code> rows are yardsticks.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"..","features":[],"search":"../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.49251538.min.js"></script>
+      
+    
+  </body>
+</html>
