@@ -21,7 +21,7 @@ from sentionaut.learned.axon_report import (
     plot_samples,
     plot_validation,
 )
-from sentionaut.learned.axon_world import AxonMapWorld
+from sentionaut.learned.axon_world import AxonMapWorld, distill_hdf5
 from sentionaut.learned.mnist_world import amps_from_digit
 
 
