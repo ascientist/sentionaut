@@ -326,7 +326,9 @@ def _rollout_loss(model: AxonMapWorld, batch: dict) -> torch.Tensor:
     return loss / k
 
 
-def _save_ckpt(path: Path, model, opt, epoch: int, history: list[float]) -> None:
+def _save_ckpt(
+    path: Path, model, opt, epoch: int, history: list[float], val_history: list[float]
+) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(
         {
@@ -334,6 +336,12 @@ def _save_ckpt(path: Path, model, opt, epoch: int, history: list[float]) -> None
             "optimizer": opt.state_dict(),
             "epoch": epoch,
             "loss_history": history,
+            "val_history": val_history,
+            # Width, depth and electrode count are recoverable from the weights;
+            # these three are not.
+            "grid_shape": model.grid_shape,
+            "heads": model.blocks[0].cross.num_heads,
+            "dt_ms": model.dt_ms,
             "torch_rng": torch.get_rng_state(),
             "numpy_rng": np.random.get_state(),
         },
@@ -341,13 +349,13 @@ def _save_ckpt(path: Path, model, opt, epoch: int, history: list[float]) -> None
     )
 
 
-def _load_ckpt(path: Path, model, opt) -> tuple[int, list[float]]:
+def _load_ckpt(path: Path, model, opt) -> tuple[int, list[float], list[float]]:
     ckpt = torch.load(path, map_location="cpu", weights_only=False)
     model.load_state_dict(ckpt["model"])
     opt.load_state_dict(ckpt["optimizer"])
     torch.set_rng_state(ckpt["torch_rng"])
     np.random.set_state(ckpt["numpy_rng"])
-    return int(ckpt["epoch"]), list(ckpt["loss_history"])
+    return int(ckpt["epoch"]), list(ckpt["loss_history"]), list(ckpt.get("val_history", []))
 
 
 def distill_hdf5(
@@ -384,9 +392,10 @@ def distill_hdf5(
     opt = torch.optim.Adam(model.parameters(), lr=lr)
     start_epoch = 0
     history: list[float] = []
+    val_history: list[float] = []
     ckpt = Path(ckpt_path) if ckpt_path else None
     if ckpt is not None and ckpt.exists():
-        start_epoch, history = _load_ckpt(ckpt, model, opt)
+        start_epoch, history, val_history = _load_ckpt(ckpt, model, opt)
         model.to(device)
 
     train_ds = AxonSequenceDataset(dataset_path, train_w, scale)
@@ -407,6 +416,7 @@ def distill_hdf5(
     signal.signal(signal.SIGTERM, _on_term)
     t_load = 0.0
     t_step = 0.0
+    t_val = 0.0
     n_samples = 0
     try:
         for epoch in range(start_epoch, epochs):
@@ -431,11 +441,15 @@ def distill_hdf5(
                 if stop["flag"]:
                     break
             history.append(total / max(count, 1))
+            t0 = time.perf_counter()
+            val_history.append(_eval_mse(model, val_loader, device, pin, bf16))
+            t_val += time.perf_counter() - t0
             if ckpt is not None:
-                _save_ckpt(ckpt, model, opt, epoch + 1, history)
+                _save_ckpt(ckpt, model, opt, epoch + 1, history, val_history)
             if stop["flag"]:
                 break
-        val_mse = _eval_mse(model, val_loader, device, pin, bf16)
+        if not val_history:
+            val_history.append(_eval_mse(model, val_loader, device, pin, bf16))
     finally:
         signal.signal(signal.SIGTERM, previous)
         train_ds.close()
@@ -445,11 +459,22 @@ def distill_hdf5(
     timing = {
         "data_load_s": t_load,
         "forward_backward_s": t_step,
+        "validation_s": t_val,
         "n_samples": n_samples,
         "samples_per_s": n_samples / max(t_load + t_step, 1e-9),
         "peak_gpu_mem_bytes": int(peak),
-        "val_mse": val_mse,
+        "val_mse": val_history[-1],
         "loss_history": history,
+        "val_history": val_history,
+        "batch_size": batch_size,
+        "num_workers": num_workers,
+        "rollout_k": rollout_k,
+        "grid_shape": list(grid),
+        "n_electrodes": n_elec,
+        "n_train_windows": len(train_w),
+        "n_val_windows": len(val_w),
+        "n_parameters": sum(p.numel() for p in model.parameters()),
+        "bf16": bool(bf16),
         "device": str(device),
     }
     if timing_path is not None:
