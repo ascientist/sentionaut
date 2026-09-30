@@ -140,7 +140,9 @@ make animate MODEL=all OUTDIR=artifacts
 Renders one dual-panel (percept | tissue-geometry) clip per physics model on
 MPS: the Axon Map sweeps `rho`/`axlambda` and translates the array; the cortical
 Scoreboard and Dynaphos sweep the implant to expose cortical-magnification growth
-(Dynaphos also shows temporal charge buildup). Outputs go to `artifacts/`.
+(Dynaphos also shows temporal charge buildup); Dynaphos × axon map sweeps
+`axlambda` (streak length), then the current (`rho = sqrt(I/K)`), then fades one
+pulse. Outputs go to `artifacts/`.
 
 ```bash
 make demos
@@ -149,7 +151,9 @@ make demos
 Renders the documentation demos: the implant stays fixed and one zone of
 neighbouring electrodes receives a stimulation sequence (single electrodes,
 pairs, an amplitude ramp, then a pulse train). The GIFs are written to
-`docs/assets/demos/` and shown on each model page (`docs/models/*.md`).
+`docs/assets/demos/` and shown on each model page (`docs/models/*.md`). For
+Dynaphos × axon map it also renders a peripheral-zone sequence, the sweep and
+the didactic figures (`examples/dynaphos_axonmap_figures.py`).
 
 ## Interactive demo
 

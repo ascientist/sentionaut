@@ -30,6 +30,9 @@ animate:
 
 demos:
 	$(UV) run sentionaut-animate --model all --scenario sequence --outdir docs/assets/demos
+	$(UV) run sentionaut-animate --model dynaphos_axonmap --outdir artifacts
+	cp artifacts/dynaphos_axonmap.gif docs/assets/demos/dynaphos_axonmap_sweep.gif
+	$(UV) run python examples/dynaphos_axonmap_figures.py
 
 train:
 	$(UV) run sentionaut-train train --dataset $(WORLD_DATASET) --config configs/train.yaml

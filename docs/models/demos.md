@@ -2,7 +2,7 @@
 
 [Home](../index.md) · [Getting started](../getting-started.md) · [Nomenclature](../nomenclature.md) · [Models](index.md) · [References](../references.md)
 
-Each physics model page has a short demo clip. All three clips answer the same
+Each physics model page has a short demo clip. All four clips answer the same
 question:
 
 > **If we keep the implant still and stimulate one small spot, what does the
@@ -12,25 +12,28 @@ This page explains the shared setup, the stimulation sequence, and how to read
 the figures. The model pages then walk through what is specific to each model:
 [Axon map](axonmap.md#demo-walkthrough),
 [Scoreboard](scoreboard.md#demo-walkthrough),
-[Dynaphos](dynaphos.md#demo-walkthrough).
+[Dynaphos](dynaphos.md#demo-walkthrough),
+[Dynaphos × axon map](dynaphos-axonmap.md#demo-walkthrough).
 
 ## 1. The setup
 
 - **The implant never moves.** Its pose is fixed for the whole clip, so any
   change in the percept comes from the stimulation, not from geometry.
 - **One zone of four electrodes.** The electrode closest to the centre of the
-  array plus its three nearest neighbours (Argus II for the retinal model,
+  array plus its three nearest neighbours (Argus II for the retinal models,
   Orion for the cortical models). They are drawn in **red** in the tissue panel.
 - **Model parameters are fixed.** For the axon map, $\rho = 200\,\mu m$ and
   $\lambda = 500\,\mu m$. For the Scoreboard, $\rho = 1000\,\mu m$ on the cortex.
+  Dynaphos × axon map uses $\lambda = 500\,\mu m$, and its $\rho$ follows
+  from the current.
 - **Time.** One frame is one call to `model.step`, which advances
   $\Delta t = 20$ ms of simulated time. The GIFs play at 12 frames per second,
   so they run about 4 times slower than real time.
 
 ## 2. The stimulation sequence
 
-The same schedule is used for all three models (only the amplitude unit
-changes). Every step is a pulse followed by a rest, so you can watch each
+The same schedule is used for all four models (only the amplitude unit
+changes: Dynaphos × axon map is retinal but uses µA, like Dynaphos). Every step is a pulse followed by a rest, so you can watch each
 response appear and fade.
 
 | Stage | Electrodes | Amplitude (retinal / cortical) | Frames |
@@ -48,7 +51,9 @@ comes later.
 ## 3. How to read the figures
 
 **The clip.** Left: the predicted percept in degrees of visual angle (dva).
-Right: the tissue with the electrode array. Red dots are the zone; yellow
+Right: the tissue with the electrode array. For the retinal models the two
+panels are mirrored vertically: the eye's optics invert the image, so the
+inferior retina (y < 0) sees the upper visual field (y > 0). Red dots are the zone; yellow
 circles mark the electrodes being stimulated in the current frame. The title
 says which stage you are in, which electrodes are on, and at what amplitude.
 The colour scale is the same for the whole clip, so a darker frame really is a
@@ -87,12 +92,12 @@ Dynaphos uses a different, richer temporal model; see its page.
 
 ## 5. Side-by-side summary
 
-| Question | Axon map | Scoreboard | Dynaphos |
-| --- | --- | --- | --- |
-| Shape of one phosphene | streak along the axon bundle | round blob | small round, sharp-edged blob |
-| What does more current do? | mostly a **bigger** phosphene | a **brighter** phosphene, same size | a **bigger** phosphene; brightness saturates |
-| How fast does it appear and fade? | 20% per frame (100 ms time constant) | same as Axon map | appears in 1–2 frames, lingers about 200 ms after the pulse |
-| Does repeated stimulation weaken it? | no (no memory) | no (no memory) | **yes**: the memory trace lowers the effective current |
+| Question | Axon map | Scoreboard | Dynaphos | Dynaphos × axon map |
+| --- | --- | --- | --- | --- |
+| Shape of one phosphene | streak along the axon bundle | round blob | small round, sharp-edged blob | round near the fovea, streak in the periphery |
+| What does more current do? | mostly a **bigger** phosphene | a **brighter** phosphene, same size | a **bigger** phosphene; brightness saturates | a **bigger**, rounder phosphene ($\rho = \sqrt{I/K}$); brightness saturates |
+| How fast does it appear and fade? | 20% per frame (100 ms time constant) | same as Axon map | appears in 1–2 frames, lingers about 200 ms after the pulse | same as Dynaphos |
+| Does repeated stimulation weaken it? | no (no memory) | no (no memory) | **yes**: the memory trace lowers the effective current | **yes**, same as Dynaphos |
 
 ## 6. Try it yourself
 

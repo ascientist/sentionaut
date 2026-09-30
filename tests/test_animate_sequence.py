@@ -65,3 +65,40 @@ def test_sequence_render_keeps_pose_fixed(tmp_path, monkeypatch):
     ]
     assert all(p.stat().st_size > 0 for p in paths)
     assert poses and all(p == Pose() for p in poses)
+
+
+def test_dynaphos_axonmap_sequence_and_sweep(tmp_path):
+    kw = dict(on=1, rest=1, train_pulses=1, train_on=1, train_rest=1)
+    paths = animate.animate_sequence(
+        "dynaphos_axonmap",
+        tmp_path,
+        torch.device("cpu"),
+        zone=animate.PERIPHERAL_ZONE,
+        axlambda=1500.0,
+        suffix="_periphery",
+        window=((-8.0, 0.0), (0.0, 8.0), 1.0),
+        **kw,
+    )
+    assert [p.name for p in paths] == [
+        "dynaphos_axonmap_sequence_periphery.gif",
+        "dynaphos_axonmap_sequence_periphery_stages.png",
+        "dynaphos_axonmap_sequence_periphery_timeline.png",
+    ]
+    sweep = animate.animate_dynaphos_axonmap(tmp_path, torch.device("cpu"), n_frames=8)
+    assert all(p.stat().st_size > 0 for p in paths + sweep)
+
+
+def test_percept_panel_is_not_flipped():
+    """Row 0 of every percept grid is the top (y max); the panel must draw it on top."""
+    from types import SimpleNamespace
+
+    cfg = SimpleNamespace(xrange=(-4, 4), yrange=(-4, 4))
+    scene = SimpleNamespace(cfg=cfg, tissue=np.zeros((1, 2)), tissue_title="", unit="um", scale=1.0)
+    img = np.zeros((9, 9))
+    img[0, :] = 1.0  # top row bright
+    frame = animate._draw_frame(scene, img, "", np.zeros((1, 2)), [], vmax=1.0)
+    left = frame[:, : frame.shape[1] // 2].astype(int)
+    # inferno at 1.0 is pale yellow: high red and green, lower blue
+    bright = (left[..., 0] > 230) & (left[..., 1] > 230) & (left[..., 2] < 200)
+    rows = np.nonzero(bright)[0]
+    assert rows.size and rows.mean() < frame.shape[0] * 0.4

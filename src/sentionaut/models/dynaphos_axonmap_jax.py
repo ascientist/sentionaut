@@ -199,9 +199,14 @@ class DynaphosAxonMapJax(PerceptModel):
             max_percept=max_percept,
         )
 
-    @property
-    def axlambda(self) -> float:
-        return self.params.axlambda
+    # Same scalar attributes as DynaphosAxonMapTorch, so callers can swap backends.
+    axlambda = property(lambda self: self.params.axlambda)
+    dt = property(lambda self: self.params.dt)
+    a_thr = property(lambda self: self.params.a_thr)
+    a50 = property(lambda self: self.params.a50)
+    sig_slope = property(lambda self: self.params.sig_slope)
+    excitability = property(lambda self: self.params.excitability)
+    rheobase = property(lambda self: self.params.rheobase)
 
     def build(self, implant: Implant, topography: AxonMapTopography) -> "DynaphosAxonMapJax":
         self.implant = implant

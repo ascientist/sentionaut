@@ -104,7 +104,7 @@ extent = [cfg.xrange[0], cfg.xrange[1], cfg.yrange[0], cfg.yrange[1]]
 with col1:
     st.subheader("Percept")
     fig, ax = plt.subplots(figsize=(4.5, 4.5))
-    im = ax.imshow(img, cmap="inferno", extent=extent, origin="lower")
+    im = ax.imshow(img, cmap="inferno", extent=extent, origin="upper")
     ax.set_xlabel("x (dva)")
     ax.set_ylabel("y (dva)")
     fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)

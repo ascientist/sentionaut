@@ -6,6 +6,8 @@ schematic. Two scenarios:
 - ``sweep``: Axon Map sweeps rho/axlambda (phase-offset) and translates the
   implant; the cortical Scoreboard and Dynaphos sweep the implant toward the
   periphery to expose cortical-magnification growth.
+  Dynaphos x axon map sweeps lambda (streak length), then the current (rho =
+  sqrt(I/K) grows and washes the streak out), then shows one pulse fading.
 - ``sequence``: the implant stays still and a small zone of neighbouring
   electrodes receives a stimulation sequence (single electrodes, pairs, an
   amplitude ramp, then a repeated pulse train), so the clip shows how each model
@@ -34,11 +36,15 @@ import numpy as np  # noqa: E402
 import torch  # noqa: E402
 
 from .core.base import Action, Pose  # noqa: E402
-from .core.config import Config  # noqa: E402
+from .core.config import AXON_MAP_MODELS, UA_AMP_MODELS, Config  # noqa: E402
 from .core.device import get_device  # noqa: E402
 from .core.registry import build_components  # noqa: E402
 
 RETINAL_LEVELS = (1.0, 2.0, 3.0)  # x threshold
+# Argus II corner zone (centre first) for the Dynaphos x axon map periphery demo,
+# and a percept window framing its phosphenes and their axonal streaks.
+PERIPHERAL_ZONE = ["B2", "A2", "B1", "C2"]
+PERIPHERAL_WINDOW = ((-18.0, 2.0), (-4.0, 16.0), 0.5)
 CORTICAL_LEVELS = (100.0, 200.0, 300.0)  # uA
 
 
@@ -79,12 +85,16 @@ class Scene(NamedTuple):
 def _scene(
     model_name: str,
     device: torch.device,
-    window: tuple[tuple[float, float], tuple[float, float], float] = ((-6, 6), (-6, 6), 0.2),
+    window: tuple[tuple[float, float], tuple[float, float], float] | None = None,
 ) -> Scene:
-    """Build the components and tissue scatter; ``window`` only applies to cortical models."""
-    if model_name == "axonmap":
+    """Build the components and tissue scatter for a percept ``window`` (dva).
+
+    Defaults: 24 x 24 dva for retinal models, 12 x 12 dva for cortical ones.
+    """
+    if model_name in AXON_MAP_MODELS:
+        xrange, yrange, xystep = window or ((-12, 12), (-12, 12), 0.5)
         cfg = Config(
-            model="axonmap", implant="argusii", xrange=(-12, 12), yrange=(-12, 12), xystep=0.5
+            model=model_name, implant="argusii", xrange=xrange, yrange=yrange, xystep=xystep
         )
         implant, topo, model = build_components(cfg, device)
         coords = topo.coords.reshape(-1, 2).cpu().numpy()
@@ -100,7 +110,7 @@ def _scene(
             "microns",
             1.0,
         )
-    xrange, yrange, xystep = window
+    xrange, yrange, xystep = window or ((-6, 6), (-6, 6), 0.2)
     cfg = Config(
         model=model_name,
         implant="orion",
@@ -125,12 +135,15 @@ def _draw_frame(
     highlight: list[int],
     active: tuple[int, ...] = (),
     vmax: float | None = None,
+    spread: dict[int, float] | None = None,
 ) -> np.ndarray:
+    """``spread`` draws a circle of that radius (tissue units) around electrodes,
+    e.g. the Dynaphos current spread rho = sqrt(I/K) on the retina."""
     cfg = scene.cfg
     s = scene.scale
     fig, (axp, axt) = plt.subplots(1, 2, figsize=(8, 4), dpi=80)
     extent = [cfg.xrange[0], cfg.xrange[1], cfg.yrange[0], cfg.yrange[1]]
-    axp.imshow(img, cmap="inferno", extent=extent, origin="lower", vmin=0.0, vmax=vmax)
+    axp.imshow(img, cmap="inferno", extent=extent, origin="upper", vmin=0.0, vmax=vmax)
     axp.set_title(title, fontsize=10)
     axp.set_xlabel("x (dva)")
     axp.set_ylabel("y (dva)")
@@ -140,6 +153,12 @@ def _draw_frame(
         axt.scatter(elec[e, 0] / s, elec[e, 1] / s, s=60, c="tab:red")
     for e in active:
         axt.scatter(elec[e, 0] / s, elec[e, 1] / s, s=140, facecolors="none", edgecolors="yellow")
+    for e, radius in (spread or {}).items():
+        axt.add_patch(
+            plt.Circle(
+                (elec[e, 0] / s, elec[e, 1] / s), radius / s, fill=False, color="orange", lw=1
+            )
+        )
     axt.set_title(scene.tissue_title, fontsize=10)
     axt.set_xlabel(f"x ({scene.unit})")
     axt.set_ylabel(f"y ({scene.unit})")
@@ -222,10 +241,67 @@ def animate_dynaphos(outdir: Path, device: torch.device, n_frames: int = 48) -> 
     return _animate_cortical("dynaphos", outdir, device, n_frames)
 
 
+def animate_dynaphos_axonmap(outdir: Path, device: torch.device, n_frames: int = 48) -> list[Path]:
+    """Three acts on a fixed Argus II (corner A1, centre C5, corner F10):
+
+    1. lambda sweep at 100 uA: the round Dynaphos blob grows an axonal streak;
+    2. current sweep at lambda = 1500 um: rho = sqrt(I/K) grows and washes it out;
+    3. one 150 uA pulse, then rest: the streak lingers ~200 ms and vanishes.
+
+    Acts 1-2 restart the model for every frame (5 x 20 ms of stimulation, enough
+    for A to cross threshold) so each frame isolates one parameter value; act 3
+    threads the state through time.
+    """
+    scene = _scene("dynaphos_axonmap", device, ((-16, 16), (-16, 16), 0.5))
+    implant, model = scene.implant, scene.model
+    names = implant.names
+    sel = [names.index(n) for n in ("A1", "C5", "F10")]
+    N = implant.n_electrodes
+    elec = implant.electrode_coords().cpu().numpy()
+    n_sweep = max(n_frames // 3, 2)
+    n_pulse, n_rest = 5, max(n_frames - 2 * n_sweep - 5, 1)
+
+    def amp_of(current: float) -> torch.Tensor:
+        amp = torch.zeros(N, device=device)
+        amp[sel] = current
+        return amp
+
+    def settled(current: float, lam: float):
+        state = None
+        for _ in range(5):
+            state = model.step(state, Action(amp=amp_of(current), axlambda=lam))
+        return state
+
+    acts = [("lambda sweep", 100.0, float(lam)) for lam in np.geomspace(50, 2000, n_sweep)]
+    acts += [("current sweep", float(c), 1500.0) for c in np.linspace(60, 300, n_sweep)]
+    renders = []
+    for stage, current, lam in acts:
+        renders.append((stage, current, lam, settled(current, lam), current))
+    state = None
+    for t in range(n_pulse + n_rest):
+        current = 150.0 if t < n_pulse else 0.0
+        state = model.step(state, Action(amp=amp_of(current), axlambda=1500.0))
+        stage = "pulse" if t < n_pulse else f"rest +{(t - n_pulse + 1) * 20} ms"
+        renders.append((stage, current, 1500.0, state, 150.0))
+
+    frames = []
+    for stage, current, lam, st, shown in renders:
+        rho = float(st.aux["sigma"][sel[0]])
+        title = (
+            f"Dynaphos x axon map: {stage}\nI={shown:.0f} uA  rho={rho:.0f} um  lambda={lam:.0f} um"
+        )
+        active = tuple(sel) if current > 0 else ()
+        spread = {e: float(st.aux["sigma"][e]) for e in sel}
+        img = st.image.detach().cpu().numpy()
+        frames.append(_draw_frame(scene, img, title, elec, sel, active, 1.0, spread))
+    return _write(frames, outdir, "dynaphos_axonmap", fps=8)
+
+
 ANIMATORS = {
     "axonmap": animate_axonmap,
     "scoreboard": animate_scoreboard,
     "dynaphos": animate_dynaphos,
+    "dynaphos_axonmap": animate_dynaphos_axonmap,
 }
 
 
@@ -330,7 +406,7 @@ def _sequence_figures(
     fig, axes = plt.subplots(1, len(picks), figsize=(2.2 * len(picks), 2.7), dpi=100)
     for n, (ax, i) in enumerate(zip(axes, picks), start=1):
         st = steps[i]
-        ax.imshow(images[i], cmap="inferno", extent=extent, origin="lower", vmin=0.0, vmax=vmax)
+        ax.imshow(images[i], cmap="inferno", extent=extent, origin="upper", vmin=0.0, vmax=vmax)
         head = f"({n}) {_kind(st.stage) if st.electrodes else 'rest'}, t={i * dt_ms:.0f} ms"
         ax.set_title(f"{head}\n{_step_label(st, scene.implant.names, unit)}", fontsize=7)
         ax.set_xticks([])
@@ -392,13 +468,26 @@ def animate_sequence(
     outdir: Path,
     device: torch.device,
     zone_size: int = 4,
+    zone: list[str] | None = None,
+    axlambda: float = 500.0,
+    suffix: str = "",
+    window: tuple[tuple[float, float], tuple[float, float], float] | None = None,
     **schedule_kwargs,
 ) -> list[Path]:
-    """Fixed implant pose; a stimulation sequence over one zone of electrodes."""
-    scene = _scene(model_name, device)
+    """Fixed implant pose; a stimulation sequence over one zone of electrodes.
+
+    ``zone`` names the electrodes (centre first) instead of the default zone at
+    the array centre; ``suffix`` is appended to the output file names and
+    ``window`` overrides the retinal percept window (dva).
+    """
+    scene = _scene(model_name, device, window)
     elec = scene.implant.electrode_coords().cpu().numpy()
-    zone = stimulation_zone(elec, zone_size)
-    retinal = model_name == "axonmap"
+    if zone is None:
+        zone = stimulation_zone(elec, zone_size)
+    else:
+        zone = [scene.implant.names.index(n) for n in zone]
+    retinal = model_name in AXON_MAP_MODELS
+    ua = model_name in UA_AMP_MODELS
     if not retinal:
         # Near the fovea cortical magnification makes phosphenes a fraction of a
         # degree wide, so zoom the percept onto the zone's visual-field location.
@@ -410,18 +499,22 @@ def animate_sequence(
     implant, model = scene.implant, scene.model
     names = implant.names
     N = implant.n_electrodes
-    levels = RETINAL_LEVELS if retinal else CORTICAL_LEVELS
-    unit = "x threshold" if retinal else "uA"
+    levels = CORTICAL_LEVELS if ua else RETINAL_LEVELS
+    unit = "uA" if ua else "x threshold"
     steps = sequence_schedule(zone, levels, **schedule_kwargs)
 
     state = None
     images = []
     trace_a: list[float] = []
     trace_q: list[float] = []
+    spreads: list[dict[int, float]] = []
     for st in steps:
         amp = torch.zeros(N, device=device)
         amp[list(st.electrodes)] = st.amp
-        if retinal:
+        if retinal and ua:
+            # Dynaphos pulse defaults (300 Hz, 170 us); lambda as in the axon-map demo.
+            action = Action(amp=amp, axlambda=axlambda, pose=Pose())
+        elif retinal:
             on = amp > 0
             action = Action(
                 amp=amp,
@@ -439,15 +532,20 @@ def animate_sequence(
         if "A" in state.aux:
             trace_a.append(float(state.aux["A"][zone[0]]))
             trace_q.append(float(state.aux["Q"][zone[0]]))
+        if retinal and ua:  # retinal current spread (microns) of stimulated electrodes
+            spreads.append({e: float(state.aux["sigma"][e]) for e in st.electrodes})
 
     # One colour scale for the whole clip, otherwise every fading frame is
     # re-normalised to full brightness and the temporal dynamics disappear.
     vmax = max(float(img.max()) for img in images) or 1.0
+    spreads = spreads if spreads else [None] * len(steps)
     frames = []
-    for st, img in zip(steps, images):
+    for st, img, spread in zip(steps, images, spreads):
         title = f"{model_name} percept, fixed implant\n{st.stage}: {_step_label(st, names, unit)}"
-        frames.append(_draw_frame(scene, img, title, elec, zone, st.electrodes, vmax=vmax))
-    name = f"{model_name}_sequence"
+        frames.append(
+            _draw_frame(scene, img, title, elec, zone, st.electrodes, vmax=vmax, spread=spread)
+        )
+    name = f"{model_name}_sequence{suffix}"
     paths = _write(frames, outdir, name, mp4=False)
     dt_ms = float(getattr(model, "dt_ms", getattr(model, "dt", 20.0)))
     hidden = None
@@ -476,6 +574,17 @@ def main(
     for name in names:
         if scenario == "sequence":
             written += animate_sequence(name, out, dev)
+            if name == "dynaphos_axonmap":
+                # Same schedule on a peripheral zone, where the axon streaks show.
+                written += animate_sequence(
+                    name,
+                    out,
+                    dev,
+                    zone=PERIPHERAL_ZONE,
+                    axlambda=1500.0,
+                    suffix="_periphery",
+                    window=PERIPHERAL_WINDOW,
+                )
         else:
             written += ANIMATORS[name](out, dev, n_frames)
     return written
@@ -487,7 +596,7 @@ def cli():  # pragma: no cover - thin click wrapper
     @click.command()
     @click.option(
         "--model",
-        type=click.Choice(["axonmap", "scoreboard", "dynaphos", "all"]),
+        type=click.Choice(["axonmap", "scoreboard", "dynaphos", "dynaphos_axonmap", "all"]),
         default="all",
         show_default=True,
     )
