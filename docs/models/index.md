@@ -10,6 +10,7 @@ stimulation in, predicted visual percept out. See
 | --- | --- | --- | --- | --- |
 | [axonmap](axonmap.md) | `BiphasicAxonMapTorch` | `brain2vision` | retinal | Granley & Beyeler 2021 |
 | [axonmap-world](axonmap-world.md) | `AxonMapWorld` | `brain2vision` | retinal | distilled from axon map |
+| [axonmap-video](axonmap-video.md) | `AxonVideoWorld` | `brain2vision` | retinal | learned from axon-map video |
 | [scoreboard](scoreboard.md) | `ScoreboardTorch` | `brain2vision` | cortical | Beyeler et al. 2019 |
 | [dynaphos](dynaphos.md) | `DynaphosTorch` | `brain2vision` | cortical | van der Grinten et al. 2024 |
 | [world-model](world-model.md) | `UnifiedWorldModel` | `brain2vision` | multi | learned (no paper) |

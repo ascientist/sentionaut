@@ -499,6 +499,64 @@ def write_gif(model, dataset_path, out_path, device, upscale: int = 4, fps: int 
     return out_path
 
 
+def plot_curves(train_timing, baseline_timing, horizon, context, out_path) -> Path:
+    """Per-epoch validation for both students, and free-running error by frame."""
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    fig, (left, right) = plt.subplots(1, 2, figsize=(11, 3.8))
+    for timing, name, colour in [
+        (train_timing, "video model", "#1d4ed8"),
+        (baseline_timing, "drive + exact fade", "#c2410c"),
+    ]:
+        if timing.get("val_history"):
+            left.plot(
+                range(1, len(timing["val_history"]) + 1),
+                timing["val_history"],
+                color=colour,
+                label=f"{name}, held-out free-running",
+            )
+    if train_timing.get("loss_history"):
+        left.plot(
+            range(1, len(train_timing["loss_history"]) + 1),
+            train_timing["loss_history"],
+            color="#1d4ed8",
+            ls=":",
+            label="video model, train teacher-forced",
+        )
+    left.set_yscale("log")
+    left.set_xlabel("epoch")
+    left.set_ylabel("16-frame MSE (p99-scaled)")
+    left.set_title("Training and validation")
+    left.grid(alpha=0.3)
+    left.legend(fontsize=8)
+
+    frames = np.arange(1, len(horizon["mse_by_frame"]) + 1)
+    right.plot(frames, horizon["mse_by_frame"], color="#1d4ed8", marker=".", label="video model")
+    if "baseline_mse_by_frame" in horizon:
+        right.plot(
+            frames,
+            horizon["baseline_mse_by_frame"],
+            color="#c2410c",
+            marker=".",
+            label="drive + exact fade",
+        )
+    right.axvline(context + 0.5, color="grey", lw=0.8, ls="-.", label="end of context window")
+    right.set_xlabel("frame of a 40-frame held-out stream")
+    right.set_ylabel("free-running MSE")
+    right.set_title("Error vs horizon")
+    right.grid(alpha=0.3)
+    right.legend(fontsize=8)
+    fig.tight_layout()
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=130)
+    plt.close(fig)
+    return out_path
+
+
 def bench_step(model, dataset_path, device, calls: int = 20) -> dict:
     """Per-frame cost with a full context window, next to the teacher's own ``step``."""
     from ..core.config import Config
@@ -519,11 +577,17 @@ def bench_step(model, dataset_path, device, calls: int = 20) -> dict:
         axlambda=cfg.axlambda,
     )
 
+    def _sync():
+        if device.type == "cuda":
+            torch.cuda.synchronize()
+
     def _timed(fn, warm):
         state = warm()
+        _sync()
         t0 = time.perf_counter()
         for _ in range(calls):
             state = fn(state)
+        _sync()
         return (time.perf_counter() - t0) / calls * 1000.0
 
     def warm_video():
@@ -590,6 +654,8 @@ def train(dataset_path, ckpt_path, timing_path, device, **kwargs):
         device=get_device(device),
         **kwargs,
     )
+    if not out["completed"]:
+        raise SystemExit(f"stopped after {out['epochs_done']} epochs; rerun to resume")
     click.echo(f"val_mse={out['val_mse']:.6f} samples_per_s={out['samples_per_s']:.2f}")
 
 
@@ -599,11 +665,21 @@ def train(dataset_path, ckpt_path, timing_path, device, **kwargs):
 @click.option("--baseline-ckpt", type=click.Path(path_type=Path), default=None)
 @click.option("--timing-train", type=click.Path(path_type=Path), default=None)
 @click.option("--timing-gen", type=click.Path(path_type=Path), default=None)
+@click.option("--timing-baseline", type=click.Path(path_type=Path), default=None)
 @click.option("--out-dir", type=click.Path(path_type=Path), default=Path("docs/assets/axon-video"))
 @click.option("--device", type=str, default=None)
-def report(dataset_path, ckpt_path, baseline_ckpt, timing_train, timing_gen, out_dir, device):
+def report(
+    dataset_path,
+    ckpt_path,
+    baseline_ckpt,
+    timing_train,
+    timing_gen,
+    timing_baseline,
+    out_dir,
+    device,
+):
     """Figures, GIF and JSON: learned fade, horizon error, timings."""
-    from .axon_report import _dataset_meta, _read_json, load_student, plot_validation
+    from .axon_report import _dataset_meta, _read_json, load_student
 
     dev = get_device(device)
     model = load_video(ckpt_path, dev)
@@ -614,13 +690,14 @@ def report(dataset_path, ckpt_path, baseline_ckpt, timing_train, timing_gen, out
     horizon = horizon_errors(model, dataset_path, dev, baseline)
     fade = fade_constant(model, dataset_path, dev)
     train_timing = _read_json(timing_train)
+    baseline_timing = _read_json(timing_baseline)
     out_dir = Path(out_dir)
     figures = [
         plot_timeline(model, dataset_path, out_dir / "timeline.png", dev, baseline=baseline),
         plot_frames(model, dataset_path, out_dir / "frames.png", dev),
         write_gif(model, dataset_path, out_dir / "stream.gif", dev),
-        plot_validation(
-            train_timing, {"mse_per_step": horizon["mse_by_frame"]}, out_dir / "validation.png"
+        plot_curves(
+            train_timing, baseline_timing, horizon, model.context, out_dir / "validation.png"
         ),
     ]
     payload = {
@@ -631,6 +708,7 @@ def report(dataset_path, ckpt_path, baseline_ckpt, timing_train, timing_gen, out
         "horizon": horizon,
         "generation_timing": _read_json(timing_gen),
         "training_timing": train_timing,
+        "baseline_training_timing": baseline_timing,
         "hardware": bench_step(model, dataset_path, dev),
         "figures": [str(f) for f in figures],
     }
