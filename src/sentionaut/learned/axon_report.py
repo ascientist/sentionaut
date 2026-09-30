@@ -137,7 +137,7 @@ def holdout_metrics(
     count_per_step = np.zeros(k)
     teacher_all: list[np.ndarray] = []
     student_all: list[np.ndarray] = []
-    peak_abs_err = 0.0
+    peak_errors: list[float] = []
     for rows in val_windows:
         batch = _rows_batch(dataset_path, rows, scale)
         student = _free_rollout(model, batch, device).numpy()
@@ -147,7 +147,7 @@ def holdout_metrics(
             sq_per_step[t] += float((err[t] ** 2).mean())
             abs_per_step[t] += float(np.abs(err[t]).mean())
             count_per_step[t] += 1
-        peak_abs_err = max(peak_abs_err, float(np.abs(teacher.max() - student.max())))
+        peak_errors.append(float(teacher.max() - student.max()))
         teacher_all.append(teacher.ravel())
         student_all.append(student.ravel())
     teacher_flat = np.concatenate(teacher_all)
@@ -164,7 +164,9 @@ def holdout_metrics(
         "nrmse_vs_teacher_range": float(np.sqrt(mse) / max(teacher_range, 1e-12)),
         "pearson_r": float(np.corrcoef(student_flat, teacher_flat)[0, 1]),
         "teacher_max": float(teacher_flat.max()),
-        "peak_brightness_abs_error": peak_abs_err,
+        # Signed, so a systematic shortfall on the brightest pixel is visible.
+        "peak_brightness_error_mean": float(np.mean(peak_errors)),
+        "peak_brightness_error_max": float(np.max(np.abs(peak_errors))),
         "mse_per_step": (sq_per_step / np.maximum(count_per_step, 1)).tolist(),
         "mae_per_step": (abs_per_step / np.maximum(count_per_step, 1)).tolist(),
     }
@@ -180,11 +182,14 @@ def bench_forward(
 ) -> dict:
     """Teacher vs student spatial cost on the dataset's own grid, plus the build the student skips."""
     from ..core.registry import build_components
+    from ..topography.axon_map import _cache_dir, _cache_key
 
     device = device or torch.device("cpu")
     meta = _dataset_meta(Path(dataset_path))
     cfg = Config.from_dict({**meta["config"], "device": str(device)})
 
+    # A warm build is a pickle read; a cold one regrows the Jansonius bundles.
+    cache_hit = (_cache_dir() / f"axonmap_{_cache_key(cfg)}.pkl").exists()
     t0 = time.perf_counter()
     implant, _, teacher = build_components(cfg, device)
     build_s = time.perf_counter() - t0
@@ -214,6 +219,7 @@ def bench_forward(
         "axon_samples": int(teacher.topography.coords.shape[1]),
         "calls": calls,
         "teacher_topography_build_ms": build_s * 1000.0,
+        "teacher_topography_cache_hit": cache_hit,
         "teacher_axon_tensor_bytes": int(
             teacher.topography.coords.numel() * teacher.topography.coords.element_size()
         ),

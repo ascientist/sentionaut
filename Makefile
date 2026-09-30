@@ -7,8 +7,16 @@ EPISODES ?= 256
 SEQ_LEN ?= 16
 MODEL ?= axonmap
 OUTDIR ?= artifacts
+AXON_DATASET ?= data/axon_full.h5
+AXON_CKPT ?= data/axon_world.pt
+AXON_EPISODES ?= 512
+AXON_EPOCHS ?= 50
+AXON_BATCH ?= 256
+AXON_DIM ?= 64
+AXON_DEPTH ?= 2
+AXON_WORKERS ?= 3
 
-.PHONY: setup dataset world demo animate demos train ablate neurostim neurostim-percept neurostim-canonical test lint format docs docs-serve clean
+.PHONY: setup dataset world demo animate demos train ablate axon-world neurostim neurostim-percept neurostim-canonical test lint format docs docs-serve clean
 
 setup:
 	$(UV) sync $(ENV_FLAGS)
@@ -33,6 +41,18 @@ train:
 
 ablate:
 	$(UV) run sentionaut-train ablate --dataset $(WORLD_DATASET) --config configs/ablation.yaml
+
+# Axon-map distillation: teacher transitions, student, then the docs figures.
+axon-world:
+	$(UV) run sentionaut-world --output $(AXON_DATASET) --model axonmap --episodes $(AXON_EPISODES) \
+		--sequence-length 4 --silent-tail 2 --xrange -12 12 --yrange -12 12 --xystep 0.25 \
+		--timing data/timing_gen.json
+	$(UV) run sentionaut-distill-axon --dataset $(AXON_DATASET) --epochs $(AXON_EPOCHS) \
+		--batch-size $(AXON_BATCH) --dim $(AXON_DIM) --depth $(AXON_DEPTH) --num-workers $(AXON_WORKERS) \
+		--ckpt $(AXON_CKPT) --timing data/timing_train.json
+	$(UV) run sentionaut-axon-report --dataset $(AXON_DATASET) --ckpt $(AXON_CKPT) \
+		--timing-gen data/timing_gen.json --timing-train data/timing_train.json \
+		--out-dir docs/assets/axon-world
 
 neurostim:
 	$(UV) run python examples/neurostim_tutorial.py

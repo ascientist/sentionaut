@@ -131,19 +131,127 @@ That is the practical split. Interactive demos, tests, and a laptop rollout
 call the student. A one-off percept at a new resolution, or the data
 generation job that teaches the student, calls the axon map on a GPU.
 
-A local CPU timing of twenty forwards, after the teacher topography was
-built, is below. Building that topography on a cache miss took 35.2 s. The
-forwards themselves are both under a millisecond: on a 5×5 grid the axon
-tensor is small, and the teacher forward (0.367 ms) is faster than the
-student (0.941 ms). The student is the one you can call without that build
-and without holding the axon tensor. This is a smoke measurement, not a
-cluster result. Larger grids are timed on the GPU runs, and those numbers
-stay in `timing.json` on scratch.
+The grid decides which one is cheaper. On a toy grid the axon tensor is a few
+kilobytes and the teacher's broadcast wins outright; the student only pays off
+once there are enough pixels for the reduction over axon samples to dominate.
+[Results](#results) times both at the 97×97 grid this distillation actually
+uses.
 
-| | grid | calls | mean forward |
+## Results
+
+Every number and figure below comes from one CPU-only reproduction of the
+pipeline: a 4-core x86-64 container, 15 GB RAM, no GPU, torch 2.12.1. Rerun it
+with `make axon-world`, or the three commands that target expands to.
+
+**Teacher and data.** `axonmap` on Argus II (60 electrodes), `(-12, 12)` dva in
+both axes at `xystep` 0.25, so a 97×97 percept grid and 74 axon samples per
+pixel. `dt` 20 ms, fade `tau` 100 ms. 512 episodes of 4 stimulated steps plus 2
+silent fade steps is 3072 transitions and a 465 MB HDF5. Each episode draws 1–3
+active electrodes and fresh `rho` in [150, 300] and `axlambda` in [400, 700].
+The last 20% of episodes are held out, which is 1230 training windows and 306
+held-out windows of K = 4. Loss and every MSE here are in percept units divided
+by the teacher's own 99th percentile (0.219), where the held-out teacher frames
+reach 2.50.
+
+Two students, same data and schedule, 50 epochs of Adam at 1e-3. The default is
+`dim` 64 / `depth` 2; the wide one is `dim` 128 / `depth` 4, which is the same
+architecture with more capacity and not a different formulation.
+
+### Samples
+
+Held-out episodes, teacher on top, student below it, absolute difference under
+that. The student is free-running: it sees the first teacher frame and then only
+its own previous prediction, for six steps, which is two more than the K = 4 it
+was trained on. Columns t=5 and t=6 have no active electrode, so they are the
+analytical fade the student inherits rather than learns.
+
+![Default student on held-out episodes](../assets/axon-world/axon_world_samples.png)
+
+The default student puts the phosphenes in the right place and fades them at the
+right rate, but it blurs the axonal streak into the blob it starts from,
+undershoots the brightest pixel, and shows 4×4 blocking from the patch decoder.
+The wide student recovers the streak direction and most of the peak:
+
+![Wide student on held-out episodes](../assets/axon-world/axon_world_wide_samples.png)
+
+### Training and validation
+
+![Default student loss and validation](../assets/axon-world/axon_world_validation.png)
+
+![Wide student loss and validation](../assets/axon-world/axon_world_wide_validation.png)
+
+Training and held-out curves sit on top of each other for the default student,
+and it is still descending at epoch 50, so that run is capacity- and
+schedule-limited rather than overfit. The wide student opens a small gap after
+epoch 35, which is where early stopping would start to matter. In both, error
+grows from the first unrolled step to the third and then falls on the fourth:
+the drift is real, and the fourth step is the silent one the exact fade handles.
+
+| held-out metric | default | wide |
+| --- | --- | --- |
+| parameters | 106,704 | 814,224 |
+| checkpoint on disk | 1.3 MB | 9.9 MB |
+| K-step MSE | 0.00497 | 0.00311 |
+| RMSE | 0.0705 | 0.0558 |
+| MAE | 0.0197 | 0.0130 |
+| RMSE / teacher range | 2.8% | 2.2% |
+| Pearson r vs teacher | 0.910 | 0.947 |
+| mean peak-brightness shortfall | 0.285 | 0.103 |
+| worst peak-brightness error | 1.29 | 0.881 |
+
+The training loop's own final-epoch `val_mse` (0.00484 and 0.00311) agrees with
+the MSE column; it averages per batch instead of per pixel. Peak brightness is
+the weak spot in both: the student is biased low on the single brightest pixel,
+by 11% of the teacher's maximum even in the wide run.
+
+### Hardware
+
+Teacher generation, all 3072 transitions:
+
+| | time | note |
+| --- | --- | --- |
+| Jansonius topography, cold cache | 1.35 s | regrows the bundles and writes the pickle |
+| Jansonius topography, warm cache | 0.65 s | pickle read |
+| teacher steps | 24.1 s | 125 transitions/s |
+| HDF5 write | 0.47 s | 465 MB, 32-row slabs |
+
+The axon tensor the student never allocates is 5.6 MB here (97×97 pixels × 74
+samples × 2 coordinates, fp32).
+
+Student training, 50 epochs:
+
+| | default | wide |
+| --- | --- | --- |
+| batch size | 256 | 64 |
+| loader workers | 3 | 2 |
+| wall clock | 8 m 49 s | 24 m 58 s |
+| data loading | 14.9 s | 6.6 s |
+| forward + backward | 461.6 s | 1368.5 s |
+| per-epoch validation | 46.2 s | 116.1 s |
+| throughput | 129 windows/s | 45 windows/s |
+
+Batch size is not free on CPU: the wide student at batch 256 was OOM-killed at
+15 GB, because the unrolled loss keeps `K × depth` attention maps of
+`batch × heads × 625 patches × 60 electrodes` alive for the backward pass.
+Batch 64 fits. On the GPU runs reported in the pull request the same shapes were
+under 1 GB, and data loading rather than the step was the first bottleneck.
+
+Spatial cost per call, mean of 30 after a warmup, same CPU, same 97×97 grid:
+
+| batch | teacher `spatial_forward` | student `spatial_drive` (default) | student (wide) |
 | --- | --- | --- | --- |
-| axon map `spatial_forward` | 5×5 | 20 | 0.367 ms |
-| `AxonMapWorld.spatial_drive` | 5×5 | 20 | 0.941 ms |
+| 1 | 15.6 ms | 1.49 ms | 3.49 ms |
+| 8 | no batch dimension | 4.79 ms (0.60 ms/sample) | 14.6 ms (1.82 ms/sample) |
+| 64 | no batch dimension | 43.5 ms (0.68 ms/sample) | 137 ms (2.14 ms/sample)  |
+
+The teacher has no batch dimension, so the honest comparison is per sample: at
+this grid the default student is 10× faster than the teacher on a single call
+and 23× faster batched, before counting the topography build and the 5.6 MB it
+does not have to hold.
+
+Raw numbers, including the per-step error breakdown and the full config, are in
+[`axon_world_report.json`](../assets/axon-world/axon_world_report.json) and
+[`axon_world_wide_report.json`](../assets/axon-world/axon_world_wide_report.json).
 
 ## Ceiling
 
@@ -153,4 +261,13 @@ those coordinates passed to `bind`, and it needs teacher rollouts that cover
 the new geometry if the set encoder has not seen similar arrangements. This
 is not a claim of zero-shot clinical fidelity.
 
-Source: `src/sentionaut/learned/axon_world.py`
+Two limits are visible in the measured samples rather than argued from the
+design. The patch decoder writes each `patch_size × patch_size` block from one
+token, so a low-capacity run leaves 4×4 blocking; smaller patches or an
+overlapping decode would remove it at a cost in tokens. And both students
+undershoot the brightest pixel, because MSE over a field that is mostly zero
+pays little for the peak; a peak-weighted or log-brightness loss is the lever
+there.
+
+Source: `src/sentionaut/learned/axon_world.py`,
+report: `src/sentionaut/learned/axon_report.py`
