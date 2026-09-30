@@ -40,6 +40,7 @@ sentionaut-animate = "sentionaut.animate:cli"
 sentionaut-train = "sentionaut.learned.train:cli"
 sentionaut-distill-axon = "sentionaut.learned.axon_world:cli"
 sentionaut-axon-report = "sentionaut.learned.axon_report:cli"
+sentionaut-axon-video = "sentionaut.learned.axon_video:cli"
 sentionaut-calibrate = "sentionaut.calibrate:cli"
 
 [tool.uv.extra-build-dependencies]

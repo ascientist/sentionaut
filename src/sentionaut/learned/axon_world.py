@@ -13,6 +13,7 @@ import json
 import signal
 import time
 from pathlib import Path
+from typing import Callable
 
 import click
 import h5py
@@ -342,6 +343,7 @@ def _save_ckpt(
             "grid_shape": model.grid_shape,
             "heads": model.blocks[0].cross.num_heads,
             "dt_ms": model.dt_ms,
+            "arch": getattr(model, "arch", None),
             "torch_rng": torch.get_rng_state(),
             "numpy_rng": np.random.get_state(),
         },
@@ -375,16 +377,27 @@ def distill_hdf5(
     patch_size: int = 4,
     num_workers: int = 0,
     bf16: bool = False,
+    model_factory: Callable[[tuple, int, float], nn.Module] | None = None,
+    loss_fn: Callable[[nn.Module, dict], torch.Tensor] | None = None,
 ) -> dict:
-    """Train ``AxonMapWorld`` on axon-map transitions. Loss is K-step MSE after the exact fade."""
+    """Train on axon-map transitions. Default is ``AxonMapWorld``, K-step MSE after the exact fade.
+
+    ``model_factory(grid, n_electrodes, dt_ms)`` and ``loss_fn(model, batch)`` swap in
+    another student over the same windows, checkpoints, and timings.
+    """
     dataset_path = Path(dataset_path)
     device = device or get_device()
     if device.type == "cuda":
         torch.cuda.reset_peak_memory_stats()
     train_w, val_w, scale, grid, n_elec, dt_ms = _episode_windows(dataset_path, rollout_k)
-    model = AxonMapWorld(
-        grid, n_elec, dim=dim, depth=depth, heads=heads, patch_size=patch_size, dt_ms=dt_ms
-    ).to(device)
+    if model_factory is None:
+        model = AxonMapWorld(
+            grid, n_elec, dim=dim, depth=depth, heads=heads, patch_size=patch_size, dt_ms=dt_ms
+        )
+    else:
+        model = model_factory(grid, n_elec, dt_ms)
+    model = model.to(device)
+    loss_fn = loss_fn or _rollout_loss
     from ..core.config import Config
     from ..implants.registry import build_implant
 
@@ -429,7 +442,7 @@ def distill_hdf5(
                 t0 = time.perf_counter()
                 opt.zero_grad()
                 with torch.autocast(device.type, dtype=torch.bfloat16, enabled=bf16):
-                    loss = _rollout_loss(model, batch)
+                    loss = loss_fn(model, batch)
                 loss.backward()
                 opt.step()
                 _sync(device)
@@ -442,14 +455,14 @@ def distill_hdf5(
                     break
             history.append(total / max(count, 1))
             t0 = time.perf_counter()
-            val_history.append(_eval_mse(model, val_loader, device, pin, bf16))
+            val_history.append(_eval_mse(model, val_loader, device, pin, bf16, loss_fn))
             t_val += time.perf_counter() - t0
             if ckpt is not None:
                 _save_ckpt(ckpt, model, opt, epoch + 1, history, val_history)
             if stop["flag"]:
                 break
         if not val_history:
-            val_history.append(_eval_mse(model, val_loader, device, pin, bf16))
+            val_history.append(_eval_mse(model, val_loader, device, pin, bf16, loss_fn))
     finally:
         signal.signal(signal.SIGTERM, previous)
         train_ds.close()
@@ -486,13 +499,14 @@ def distill_hdf5(
 
 
 @torch.no_grad()
-def _eval_mse(model, loader, device, pin: bool, bf16: bool = False) -> float:
+def _eval_mse(model, loader, device, pin: bool, bf16: bool = False, loss_fn=None) -> float:
+    loss_fn = loss_fn or _rollout_loss
     model.eval()
     total, count = 0.0, 0
     for batch in loader:
         batch = {k: v.to(device, non_blocking=pin) for k, v in batch.items()}
         with torch.autocast(device.type, dtype=torch.bfloat16, enabled=bf16):
-            loss = _rollout_loss(model, batch)
+            loss = loss_fn(model, batch)
         total += float(loss.detach().cpu())
         count += 1
     return total / max(count, 1)
