@@ -17,6 +17,7 @@ dependencies = [
     "imageio[ffmpeg]>=2.34",
     "scikit-image>=0.22",
     "pyyaml>=6.0",
+    "huggingface_hub>=0.26",
 ]
 
 [project.optional-dependencies]
@@ -39,6 +40,8 @@ sentionaut-show = "sentionaut.visualize:cli"
 sentionaut-animate = "sentionaut.animate:cli"
 sentionaut-train = "sentionaut.learned.train:cli"
 sentionaut-distill-axon = "sentionaut.learned.axon_world:cli"
+sentionaut-axon-report = "sentionaut.learned.axon_report:cli"
+sentionaut-axon-video = "sentionaut.learned.axon_video:cli"
 sentionaut-calibrate = "sentionaut.calibrate:cli"
 
 [tool.uv.extra-build-dependencies]
