@@ -22,6 +22,7 @@ from sentionaut.learned.axon_report import (
     plot_validation,
 )
 from sentionaut.learned.axon_world import AxonMapWorld, distill_hdf5
+from sentionaut.learned.mnist_world import amps_from_digit
 
 
 def _model(h=8, w=8, n=3, **kwargs):
@@ -80,6 +81,26 @@ def test_adam_step_on_synthetic_batch():
     opt.step()
     assert torch.isfinite(loss)
     assert pred.shape == brightness.shape
+
+
+def test_digit_amps_follow_the_ink():
+    image = torch.zeros(28, 28)
+    image[:10, :8] = 1
+    names = [f"{row}{col}" for row in "ABCDEF" for col in range(1, 11)]
+    amp = amps_from_digit(image.numpy(), names)
+    assert amp[names.index("A1")] > 1.0
+    assert amp[names.index("F10")] == 0.0
+
+
+def test_from_pretrained_local_dir(tmp_path):
+    model = _model()
+    torch.save(
+        {"model": model.state_dict(), "grid_shape": (8, 8), "heads": 4, "dt_ms": 20.0},
+        tmp_path / "axon_world.pt",
+    )
+    loaded = AxonMapWorld.from_pretrained(str(tmp_path))
+    assert loaded.grid_shape == (8, 8)
+    assert loaded.n_electrodes == 3
 
 
 def test_report_round_trip(tmp_path):

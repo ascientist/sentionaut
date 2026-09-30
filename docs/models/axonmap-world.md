@@ -1,275 +1,229 @@
-# Axon-map world model
+# From the axon map to a world model
 
 [Home](../index.md) · [Getting started](../getting-started.md) · [Nomenclature](../nomenclature.md) · [Models](index.md) · [References](../references.md)
 
 **Modality:** `brain2vision` · **Tissue:** retinal
 
-Specialist student of the [axon map](axonmap.md). The shared
-[world model](world-model.md) is a different network: it learns three teachers
-at once, and it has to invent the fade. This page is the axon-map student, why
-it is the smaller thing to call, and what that costs on a GPU and off one.
+This page continues the [axon map](axonmap.md). That page is the phenomenon:
+streaks, pulse parameters, and the demo. This page is the Sentionaut
+implementation of that model, what it costs on a CPU and on a GPU, and why we
+then distill it into a world model.
 
-## What you call today
+## The model Sentionaut implements
 
-An axon-map percept is three steps.
+`BiphasicAxonMapTorch` is the same calculation as pulse2percept's biphasic
+axon map (Granley and Beyeler, 2021, on the axon paths of Beyeler et al.,
+2019). Three pieces, in order.
 
-1. Build the axon topography once. That step is pulse2percept on the CPU. It
-   grows a polyline per pixel and caches a tensor of shape
-   `(pixels, axon samples, 2)`.
-2. Reduce that tensor on the device you asked for. For every active electrode,
-   every pixel, and every axon sample, the model evaluates a Gaussian current
-   spread and a streak weight, sums electrodes, and takes the max along the
-   axon. That field is the spatial drive.
-3. Step a leaky brightness ODE. With time step `dt` and time constant `tau`,
+1. **Where the axons are.** Once per grid, on the CPU, pulse2percept grows a
+   Jansonius polyline through every pixel and we cache the raw points. For the
+   Argus II grid used below, `(-12, 12)` dva at step 0.25, that tensor is
+   `(9409 pixels, 74 samples, 2)`. It is about 5.6 MB. `rho` and `axlambda`
+   are not baked into it, so they stay inputs.
+2. **What one pulse does.** On the device you asked for, every active
+   electrode contributes a Gaussian spread and a streak weight. The drive at
+   a pixel is the max, along its axon, of the sum over electrodes. Amplitude
+   is in units of threshold. Frequency and phase duration scale brightness,
+   size, and streak length.
+3. **How the light fades.** Brightness `B` is the whole state. One step of
+   the leaky integrator, with `dt` 20 ms and `tau` 100 ms, is
 
    `B_next = B + dt * (drive - B) / tau`,
 
-   then values at or below the percept threshold become zero. The ODE does not
-   depend on the axon polylines. Brightness `B` is already the whole state.
-
-Step 1 is a cache miss measured in seconds to minutes, and it is not batched
-across patients. Step 2 allocates an intermediate proportional to
-`electrodes × pixels × axon samples`. Step 3 is a few elementwise ops.
-
-## What the student keeps and what it learns
-
-The student learns the drive. It does not learn the fade. `step(state, action)`
-still means "brightness in, stimulation in, next brightness out", the same
-`Action` and the same `State.image` as `BiphasicAxonMapTorch`.
+   and anything at or below the percept threshold becomes zero. This step
+   does not look at the axon tensor.
 
 ```python
-from sentionaut.implants.registry import build_implant
 from sentionaut.core.config import Config
+from sentionaut.core.registry import build_components
+
+cfg = Config(model="axonmap", implant="argusii", xrange=(-12, 12), yrange=(-12, 12), xystep=0.25)
+implant, topo, model = build_components(cfg)
+drive = model.spatial_forward(action)
+state = model.step(None, action)
+```
+
+The topography build is the part that needs pulse2percept and a cache
+directory. After that, `spatial_forward` and `step` are ordinary tensor code.
+
+## The check against pulse2percept
+
+The parity test in `tests/test_parity.py` builds both implementations on the
+CPU, in float32, on Argus II with electrodes C5 and E7 firing, grid
+`(-8, 8)` at step 0.5 (33×33, 72 axon samples per pixel). The test fails if
+the max absolute difference is `1e-3` or more.
+
+Measured on the machine that ran this check: max absolute error
+`5.96e-8`, mean absolute error `1.45e-9`. The torch port is the same
+arithmetic as pulse2percept 0.9.0 at the precision of float32. The generous
+threshold is there so a real regression still fails the test.
+
+## The torch model on CPU and on GPU
+
+Same call, three active electrodes at 1.5× threshold, 30 forwards after one
+warmup. CPU is the machine that ran the parity check. GPU is a Quadro RTX
+8000 on the Mila cluster. The axon cache was already warm.
+
+| | 33×33 check grid | 97×97 distillation grid |
+| --- | --- | --- |
+| CPU `spatial_forward` | 1.68 ms | 13.3 ms |
+| GPU `spatial_forward` | 0.91 ms | 1.22 ms |
+| GPU peak memory |  | 56 MB |
+
+On the small grid the axon tensor is cheap and the GPU is only a little
+faster. On the 97×97 grid the reduction is about 11× faster on the GPU. The
+topography itself stays on the CPU: a warm load of that grid was 0.35 s on
+the CPU machine and 5.6 s on the cluster node, which is unpickling and moving
+the tensor, not the pulse.
+
+The teacher has no batch dimension. Eight patients are eight calls.
+
+## Why a world model
+
+The axon map is the right teacher. It is a poor thing to call a thousand
+times. A world model, here, is a learned function with the same contract,
+`f(B_t, stimulation_t) → B_{t+1}`, that you can ship without the teacher.
+
+That is worth doing when the call site is a loop:
+
+- a policy searching for a stimulation,
+- a sweep of `rho` and `axlambda`,
+- a demo on a laptop that does not have pulse2percept,
+- a batch of patients who share an implant and a grid.
+
+It is the wrong tool when the grid, the implant, or the axon paths are new.
+Then you run the teacher, which is what generates the training data.
+
+## Two students
+
+Both students read electrode tokens `(x, y, amplitude, frequency, phase
+duration)` and condition on `rho` and `axlambda`. They differ in what they
+are willing to hard-code.
+
+**The drive student** (`AxonMapWorld`) predicts only the spatial drive. The
+fade equation above stays exact, outside the network. Error can only be in
+the picture of the streak, not in the time constant. This is the checkpoint
+we measured.
+
+**The video student** (`AxonVideoWorld`, the Genie-style model) predicts the
+next frame from a causal window of past frames and stimulations. Nothing
+temporal is hard-coded, so the rise, the fade, and the threshold have to be
+learned. The block is the Genie split (Bruce et al., 2024): attention across
+patches inside one frame, then causal attention across time at each patch, so
+the cost is `T·N² + N·T²` rather than attention over the whole video at once.
+Two Genie pieces are left out on purpose. Genie invents latent actions
+because game video has no labels; stimulation here is known, so it enters as
+electrode tokens. Genie predicts discrete visual tokens; a phosphene field is
+a smooth brightness, so the loss is mean squared error on the frame. During
+training the context frames are noised a little, so a free-running rollout
+survives its own mistakes. The network starts as "the frame stays put" and
+has to learn the change, including the fade the drive student was given.
+
+Use the drive student when you trust the ODE and want the smallest error on
+the streak. Use the video student when the thing you want to learn is the
+dynamics, or when a later teacher does not have a fade equation you can
+write down.
+
+```python
 from sentionaut.learned.axon_world import AxonMapWorld
 
-student = AxonMapWorld(grid_shape=(32, 32), n_electrodes=60)
-student.bind(build_implant(Config(implant="argusii"), device))
+student = AxonMapWorld.from_pretrained("ascientist/sentionaut-axon-world")
 state = student.step(None, action)
 ```
 
-`bind` stores the implant's `(electrodes, 2)` coordinates. Inference does not
-import pulse2percept, does not open an axon pickle, and does not care which
-eye or cache key produced the teacher. Subject `rho` and `axlambda` stay
-fields of `Action`, so one checkpoint covers the range of those scalars seen
-in the distillation data.
+`from_pretrained` downloads the checkpoint from the Hugging Face Hub into the
+local cache and rebuilds the module from the weights. A directory that
+already contains `axon_world.pt` works the same way, which is how a fine-tune
+starts: load the published weights, then keep training on your own episodes.
+The random-stimulation run is `ascientist/sentionaut-axon-world`. The MNIST
+run, whose stimulation is read off the digit instead of drawn at random, is
+`ascientist/sentionaut-axon-world-mnist`.
 
-Training reads transitions written by the axon-map teacher
-(`sentionaut-world --model axonmap`) and minimizes mean squared error on
-`B_next` after the exact fade, unrolled for a few steps. The extra steps stop
-a one-step fit from hiding a drive that only looks right for a single `dt`.
+## How close the drive student is to the teacher
 
-## Why this shape, and what we do not copy
-
-A world model here is `f(B_t, action_t) → B_{t+1}` (Ha and Schmidhuber, 2018).
-`B` is already a sufficient state of the teacher, so there is no recurrent
-latent (DreamerV3) and no video context (Genie). The
-[video world model](axonmap-video.md) is the Genie-style counterpart that
-learns the fade instead of being given it. The percept image is the
-product, so the loss stays on that image rather than on a JEPA embedding
-(V-JEPA 2). The field is smooth and low-entropy, so a diffusion sampler
-(DIAMOND, Cosmos) would add a loop we would then have to run on CPU.
-
-The pieces that do transfer:
-
-- Patch tokens with parameter-free 2D sin/cos positions (Dosovitskiy et al.,
-  2020). The grid size changes with `xystep`; a learned position table would
-  not.
-- Cross-attention from patches to a set of electrode tokens
-  `(x, y, amplitude, frequency, phase duration)` (Perceiver, Jaegle et al.,
-  2021). That matches the teacher, which is a sum over a variable set of
-  electrodes. A padded `max_electrodes × 3` vector never sees where an
-  electrode sits, so a new layout needs a new embedding row. Coordinates do
-  not.
-- Adaptive layer norm on `rho` and `axlambda` (DiT, Peebles and Xie, 2023).
-  Those two scalars rescale the whole spatial kernel, so they modulate every
-  block instead of sitting in one extra token.
-
-## Simpler to use
-
-The analytical call site is "construct an implant, build a topography, build a
-model, then `step`". The topography build is the part that fails when
-pulse2percept is missing, when the cache directory is not where the process
-expects, or when the grid key `(xrange, yrange, xystep, axlambda, eye)` has
-never been computed.
-
-The student call site is "load a checkpoint, `bind` an implant, `step`". The
-implant is a list of names and an `(E, 2)` tensor. Electrode positions still
-matter, because the streaks depend on them. The axon polylines do not, because
-those were the teacher's private implementation of the drive.
-
-The same `step` is what a policy calls inside a rollout. Swapping the teacher
-for the student does not change the loop, only what has to be installed and
-what has to be cached before the first call.
-
-## On a GPU
-
-The teacher's GPU kernel is a broadcast over electrodes, pixels, and axon
-samples. It is fast when that tensor fits and the device is busy moving it.
-It stops being cheap when you batch patients: each patient brings their own
-`(pixels, samples, 2)` topography, and the intermediate grows in the batch
-dimension until the allocation fails. The topography itself is still built on
-the CPU, one grid at a time, before any of that GPU work starts.
-
-The student is a short stack of cross-attention over `patches × electrodes`
-at a small width (`dim=64`, two blocks in the default). That cost does not
-grow with axon samples. A batch of patients is a batch dimension on the same
-module, as long as they share a grid and an electrode count, which this
-Argus II distillation does. `rho` and `axlambda` are per-example inputs, so
-the batch can mix subjects without a new topography.
-
-Use the teacher when you need a percept the student has not been shown,
-including a grid or an implant outside the distillation set. Use the student
-when you will call `step` many times on the grids it was trained on: policy
-search, long rollouts, and sweeps of pulse parameters.
-
-## Off a GPU
-
-On CPU the teacher is limited by memory bandwidth on the axon tensor, and a
-cache miss still runs the polyline build before the first frame. The student
-is a handful of GEMMs in ordinary PyTorch. No ONNX export is required for
-that. `model.to("cpu")` and `step` are the whole runtime path.
-
-That is the practical split. Interactive demos, tests, and a laptop rollout
-call the student. A one-off percept at a new resolution, or the data
-generation job that teaches the student, calls the axon map on a GPU.
-
-The grid decides which one is cheaper. On a toy grid the axon tensor is a few
-kilobytes and the teacher's broadcast wins outright; the student only pays off
-once there are enough pixels for the reduction over axon samples to dominate.
-[Results](#results) times both at the 97×97 grid this distillation actually
-uses.
-
-## Results
-
-Every number and figure below comes from one CPU-only reproduction of the
-pipeline: a 4-core x86-64 container, 15 GB RAM, no GPU, torch 2.12.1. Rerun it
-with `make axon-world`, or the three commands that target expands to.
-
-**Teacher and data.** `axonmap` on Argus II (60 electrodes), `(-12, 12)` dva in
-both axes at `xystep` 0.25, so a 97×97 percept grid and 74 axon samples per
-pixel. `dt` 20 ms, fade `tau` 100 ms. 512 episodes of 4 stimulated steps plus 2
-silent fade steps is 3072 transitions and a 465 MB HDF5. Each episode draws 1–3
-active electrodes and fresh `rho` in [150, 300] and `axlambda` in [400, 700].
-The last 20% of episodes are held out, which is 1230 training windows and 306
-held-out windows of K = 4. Loss and every MSE here are in percept units divided
-by the teacher's own 99th percentile (0.219), where the held-out teacher frames
-reach 2.50.
-
-Two students, same data and schedule, 50 epochs of Adam at 1e-3. The default is
-`dim` 64 / `depth` 2; the wide one is `dim` 128 / `depth` 4, which is the same
-architecture with more capacity and not a different formulation.
-
-### Samples
-
-Held-out episodes, teacher on top, student below it, absolute difference under
-that. The student is free-running: it sees the first teacher frame and then only
-its own previous prediction, for six steps, which is two more than the K = 4 it
-was trained on. Columns t=5 and t=6 have no active electrode, so they are the
-analytical fade the student inherits rather than learns.
+These figures are the CPU reproduction of the drive student on the 97×97
+grid: 512 episodes, 4 stimulated steps and 2 silent steps, last 20% of
+episodes held out. The student is free-running. It sees the first teacher
+frame and then only its own prediction. Columns with no active electrode are
+the analytical fade, which this student does not have to learn.
 
 ![Default student on held-out episodes](../assets/axon-world/axon_world_samples.png)
 
-The default student puts the phosphenes in the right place and fades them at the
-right rate, but it blurs the axonal streak into the blob it starts from,
-undershoots the brightest pixel, and shows 4×4 blocking from the patch decoder.
-The wide student recovers the streak direction and most of the peak:
+The default student (dim 64, depth 2, 106,704 parameters, 1.3 MB on disk)
+puts the phosphene in the right place and fades it at the right rate. It
+blurs the streak, undershoots the brightest pixel, and shows 4×4 blocking
+from the patch decoder. The wide student (dim 128, depth 4, 814,224
+parameters) recovers the streak direction and most of the peak:
 
 ![Wide student on held-out episodes](../assets/axon-world/axon_world_wide_samples.png)
-
-### Training and validation
 
 ![Default student loss and validation](../assets/axon-world/axon_world_validation.png)
 
 ![Wide student loss and validation](../assets/axon-world/axon_world_wide_validation.png)
 
-Training and held-out curves sit on top of each other for the default student,
-and it is still descending at epoch 50, so that run is capacity- and
-schedule-limited rather than overfit. The wide student opens a small gap after
-epoch 35, which is where early stopping would start to matter. In both, error
-grows from the first unrolled step to the third and then falls on the fourth:
-the drift is real, and the fourth step is the silent one the exact fade handles.
+Loss is mean squared error on the percept divided by the teacher's 99th
+percentile (0.219). Held-out teacher frames reach 2.50 in those units.
 
 | held-out metric | default | wide |
 | --- | --- | --- |
-| parameters | 106,704 | 814,224 |
-| checkpoint on disk | 1.3 MB | 9.9 MB |
 | K-step MSE | 0.00497 | 0.00311 |
 | RMSE | 0.0705 | 0.0558 |
-| MAE | 0.0197 | 0.0130 |
 | RMSE / teacher range | 2.8% | 2.2% |
 | Pearson r vs teacher | 0.910 | 0.947 |
 | mean peak-brightness shortfall | 0.285 | 0.103 |
-| worst peak-brightness error | 1.29 | 0.881 |
 
-The training loop's own final-epoch `val_mse` (0.00484 and 0.00311) agrees with
-the MSE column; it averages per batch instead of per pixel. Peak brightness is
-the weak spot in both: the student is biased low on the single brightest pixel,
-by 11% of the teacher's maximum even in the wide run.
+Train and held-out curves overlap for the default student and are still
+descending at epoch 50, so that run is limited by capacity and by the
+schedule. The GPU training of the same default architecture, on a longer
+episode (8 stimulated steps plus 2 silent) and the same 512 episodes and 50
+epochs, ended at validation MSE 0.0046. Same model, same neighbourhood of
+error.
 
-### Hardware
+Peak brightness is the weak spot. Mean squared error over a field that is
+mostly zero does not pay much for the single brightest pixel.
 
-Teacher generation, all 3072 transitions:
+## CPU and GPU, teacher against student
 
-| | time | note |
+One forward of the spatial piece, 97×97, three electrodes. The drive student
+is the published default checkpoint (dim 64, depth 2).
+
+| | CPU | GPU (RTX 8000) |
 | --- | --- | --- |
-| Jansonius topography, cold cache | 1.35 s | regrows the bundles and writes the pickle |
-| Jansonius topography, warm cache | 0.65 s | pickle read |
-| teacher steps | 24.1 s | 125 transitions/s |
-| HDF5 write | 0.47 s | 465 MB, 32-row slabs |
+| teacher `spatial_forward` | 13.3 ms | 1.22 ms |
+| student `spatial_drive`, one sample | 2.37 ms | 2.54 ms |
+| student, batch of 8, per sample |  | 0.33 ms |
 
-The axon tensor the student never allocates is 5.6 MB here (97×97 pixels × 74
-samples × 2 coordinates, fp32).
+On a single GPU call the teacher is the faster of the two: the broadcast fits
+and the transformer pays a launch cost. The student is the one that batches.
+Eight sequential teacher calls are about 9.7 ms; one batched student call is
+2.6 ms. On the CPU the student is already faster for a single call, 2.4 ms
+against 13.3 ms, and it never loads the axon tensor or pulse2percept.
 
-Student training, 50 epochs:
+A separate CPU-only container (4 cores, 15 GB, no GPU) measured the teacher
+at 15.6 ms and this student at 1.49 ms on one call, and 0.68 ms per sample at
+batch 64. Same ordering, different machine. Details and the wide student are
+in [`axon_world_report.json`](../assets/axon-world/axon_world_report.json).
 
-| | default | wide |
-| --- | --- | --- |
-| batch size | 256 | 64 |
-| loader workers | 3 | 2 |
-| wall clock | 8 m 49 s | 24 m 58 s |
-| data loading | 14.9 s | 6.6 s |
-| forward + backward | 461.6 s | 1368.5 s |
-| per-epoch validation | 46.2 s | 116.1 s |
-| throughput | 129 windows/s | 45 windows/s |
+## When the world model is the one you want
 
-Batch size is not free on CPU: the wide student at batch 256 was OOM-killed at
-15 GB, because the unrolled loss keeps `K × depth` attention maps of
-`batch × heads × 625 patches × 60 electrodes` alive for the backward pass.
-Batch 64 fits. On the GPU runs reported in the pull request the same shapes were
-under 1 GB, and data loading rather than the step was the first bottleneck.
+Call the teacher for a new grid, a new implant, or a number you will quote as
+the physics. Call the student when the grid and the implant are the ones it
+saw, and you will call `step` many times:
 
-Spatial cost per call, mean of 30 after a warmup, same CPU, same 97×97 grid:
+- interactive use on a CPU, where 2 ms and no topography build is the whole
+  product,
+- a batched search on a GPU, where the teacher cannot batch and the student
+  can,
+- a model trained on your own images. MNIST episodes paint the digit on the
+  percept grid and set each Argus electrode from the brightness of its cell,
+  then the axon-map teacher rolls the fade on the GPU. On an RTX 8000, eight
+  epochs starting from the random-stimulation checkpoint stayed at held-out
+  MSE 0.0057. The same eight epochs from scratch on that file went from
+  0.0063 to 0.0036. For this dataset the MNIST weights are the from-scratch
+  run, and the random-stimulation weights stay the general starting point
+  you can keep training. The call is `from_pretrained`, then more epochs on
+  your HDF5.
 
-| batch | teacher `spatial_forward` | student `spatial_drive` (default) | student (wide) |
-| --- | --- | --- | --- |
-| 1 | 15.6 ms | 1.49 ms | 3.49 ms |
-| 8 | no batch dimension | 4.79 ms (0.60 ms/sample) | 14.6 ms (1.82 ms/sample) |
-| 64 | no batch dimension | 43.5 ms (0.68 ms/sample) | 137 ms (2.14 ms/sample)  |
-
-The teacher has no batch dimension, so the honest comparison is per sample: at
-this grid the default student is 10× faster than the teacher on a single call
-and 23× faster batched, before counting the topography build and the 5.6 MB it
-does not have to hold.
-
-Raw numbers, including the per-step error breakdown and the full config, are in
-[`axon_world_report.json`](../assets/axon-world/axon_world_report.json) and
-[`axon_world_wide_report.json`](../assets/axon-world/axon_world_wide_report.json).
-
-## Ceiling
-
-The student cannot be more accurate than the teacher it was distilled from.
-A layout far from the Argus II coordinates in the training rollouts needs
-those coordinates passed to `bind`, and it needs teacher rollouts that cover
-the new geometry if the set encoder has not seen similar arrangements. This
-is not a claim of zero-shot clinical fidelity.
-
-Two limits are visible in the measured samples rather than argued from the
-design. The patch decoder writes each `patch_size × patch_size` block from one
-token, so a low-capacity run leaves 4×4 blocking; smaller patches or an
-overlapping decode would remove it at a cost in tokens. And both students
-undershoot the brightest pixel, because MSE over a field that is mostly zero
-pays little for the peak; a peak-weighted or log-brightness loss is the lever
-there.
-
-Source: `src/sentionaut/learned/axon_world.py`,
-report: `src/sentionaut/learned/axon_report.py`
+Source: `src/sentionaut/models/axonmap.py`,
+`src/sentionaut/learned/axon_world.py`,
+`src/sentionaut/learned/axon_video.py`.

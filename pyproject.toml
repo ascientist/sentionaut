@@ -17,6 +17,7 @@ dependencies = [
     "imageio[ffmpeg]>=2.34",
     "scikit-image>=0.22",
     "pyyaml>=6.0",
+    "huggingface_hub>=0.26",
 ]
 
 [project.optional-dependencies]

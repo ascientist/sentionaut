@@ -15,11 +15,11 @@ nav = [
     "models/index.md",
     "models/demos.md",
     "models/axonmap.md",
+    "models/axonmap-world.md",
+    "models/axonmap-video.md",
     "models/scoreboard.md",
     "models/dynaphos.md",
     "models/world-model.md",
-    "models/axonmap-world.md",
-    "models/axonmap-video.md",
   ] },
   { "NeuroStim (control)" = [
     "neurostim-formulation.md",
