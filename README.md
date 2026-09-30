@@ -26,7 +26,10 @@ Three axes are independently swappable via a `Config`:
   `Polimeni2006Map` (dva <-> cortex, split hemispheres, cortical magnification),
   plus an optional `neuropythy` MRI-derived map (lazy, falls back to Polimeni).
 - **PerceptModel**: retinal `axonmap` (`BiphasicAxonMapTorch`), cortical
-  `scoreboard` (`ScoreboardTorch`), cortical `dynaphos` (`DynaphosTorch`).
+  `scoreboard` (`ScoreboardTorch`), cortical `dynaphos` (`DynaphosTorch`), and
+  retinal `dynaphos_axonmap` (Dynaphos dynamics rendered through the axon map;
+  PyTorch `DynaphosAxonMapTorch` or JAX `DynaphosAxonMapJax` as
+  `dynaphos_axonmap_jax`, see [docs/models/dynaphos-axonmap.md](docs/models/dynaphos-axonmap.md)).
 
 ```python
 import torch
@@ -58,6 +61,7 @@ percept = model.forward(Action(amp=amp,
 | axonmap | × threshold (unitless) | 0.5–3.0 |
 | scoreboard | µA | 50–300 |
 | dynaphos | µA | 50–300 |
+| dynaphos_axonmap(_jax) | µA | 50–300 |
 
 Dataset generation and the Streamlit demo use these bands; parity tests keep
 their own fixed values.
@@ -112,7 +116,9 @@ GitHub Pages serves it at
 make setup        # uv sync --extra dev
 ```
 
-Everything runs through `uv` / `uv run`.
+Everything runs through `uv` / `uv run`. The JAX backend is optional:
+`make setup-jax` (CPU) or `uv sync --extra dev --extra jax --extra jax-cuda`
+(NVIDIA GPU).
 
 ## Parity with pulse2percept
 

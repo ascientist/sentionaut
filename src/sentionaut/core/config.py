@@ -10,8 +10,13 @@ import yaml
 
 # Canonical component ids. Implant family is implied by the model family:
 # retinal models pair with retinal implants, cortical with cortical.
-RETINAL_MODELS = {"axonmap"}
+# ``dynaphos_axonmap`` (torch) and ``dynaphos_axonmap_jax`` share one physics:
+# Dynaphos dynamics rendered through the retinal axon map.
+AXON_MAP_MODELS = {"axonmap", "dynaphos_axonmap", "dynaphos_axonmap_jax"}
+RETINAL_MODELS = set(AXON_MAP_MODELS)
 CORTICAL_MODELS = {"scoreboard", "dynaphos"}
+# Models whose ``Action.amp`` is in uA (the rest use multiples of threshold).
+UA_AMP_MODELS = {"scoreboard", "dynaphos", "dynaphos_axonmap", "dynaphos_axonmap_jax"}
 RETINAL_IMPLANTS = {"argusii", "alphaims", "alphaams", "prima", "grid"}
 CORTICAL_IMPLANTS = {"orion", "cortivis", "icvp", "neuralink"}
 
@@ -69,9 +74,9 @@ class Config:
                 f"Cortical model '{self.model}' needs a cortical implant "
                 f"({sorted(CORTICAL_IMPLANTS)}), got '{self.implant}'."
             )
-        if self.implant == "prima" and self.model == "axonmap":
+        if self.implant == "prima" and self.model in AXON_MAP_MODELS:
             raise ValueError(
-                "PRIMA is subretinal; Biphasic Axon Map is epiretinal-only. "
+                "PRIMA is subretinal; axon-map models are epiretinal-only. "
                 "Use scoreboard/dynaphos for cortical PRIMA geometry export, or "
                 "switch to a retinal implant."
             )

@@ -57,6 +57,23 @@ def build_model(config: Config) -> PerceptModel:
             costim_kappa=config.costim_kappa,
             max_percept=config.max_percept,
         )
+    if config.model in ("dynaphos_axonmap", "dynaphos_axonmap_jax"):
+        if config.model == "dynaphos_axonmap":
+            from ..models.dynaphos_axonmap import DynaphosAxonMapTorch as cls
+        else:
+            try:
+                from ..models.dynaphos_axonmap_jax import DynaphosAxonMapJax as cls
+            except ImportError as exc:
+                raise ImportError(
+                    "Model 'dynaphos_axonmap_jax' needs JAX: `uv sync --extra jax` "
+                    "(add `--extra jax-cuda` for NVIDIA GPUs)."
+                ) from exc
+        return cls(
+            axlambda=config.axlambda,
+            costim_enabled=config.costim_enabled,
+            costim_kappa=config.costim_kappa,
+            max_percept=config.max_percept,
+        )
     raise ValueError(f"Unknown model '{config.model}'.")
 
 

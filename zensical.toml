@@ -17,6 +17,7 @@ nav = [
     "models/axonmap.md",
     "models/scoreboard.md",
     "models/dynaphos.md",
+    "models/dynaphos-axonmap.md",
     "models/world-model.md",
   ] },
   { "NeuroStim (control)" = [

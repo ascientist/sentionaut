@@ -8,10 +8,13 @@ SEQ_LEN ?= 16
 MODEL ?= axonmap
 OUTDIR ?= artifacts
 
-.PHONY: setup dataset world demo animate demos train ablate neurostim neurostim-percept neurostim-canonical test lint format docs docs-serve clean
+.PHONY: setup setup-jax dataset world demo animate demos train ablate neurostim neurostim-percept neurostim-canonical test lint format docs docs-serve clean
 
 setup:
 	$(UV) sync $(ENV_FLAGS)
+
+setup-jax:
+	$(UV) sync $(ENV_FLAGS) --extra jax
 
 dataset:
 	$(UV) run sentionaut-generate --output $(DATASET) --samples $(SAMPLES)

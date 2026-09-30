@@ -18,7 +18,7 @@ from sentionaut.core.registry import build_components
 st.set_page_config(page_title="Sentionaut", layout="wide")
 st.title("Sentionaut — modular prosthetic-vision world model")
 
-MODELS = ["axonmap", "scoreboard", "dynaphos"]
+MODELS = ["axonmap", "scoreboard", "dynaphos", "dynaphos_axonmap"]
 
 
 @st.cache_resource
@@ -37,6 +37,7 @@ with st.sidebar:
     st.header("Components")
     model = st.selectbox("Percept model", MODELS)
     cortical = model in ("scoreboard", "dynaphos")
+    hybrid = model == "dynaphos_axonmap"  # Dynaphos dynamics on the retinal axon map
     options = sorted(CORTICAL_IMPLANTS if cortical else RETINAL_IMPLANTS)
     implant_name = st.selectbox("Implant", options)
     xystep = st.select_slider("Grid step (dva)", options=[0.25, 0.3, 0.5, 1.0], value=0.5)
@@ -54,6 +55,10 @@ with st.sidebar:
             None if model == "dynaphos" else st.slider("rho (microns)", 800.0, 1200.0, 1000.0, 50.0)
         )
         freq = pdur = axl = None
+    elif hybrid:
+        amp = st.slider("Current (uA)", 50.0, 300.0, 150.0, 10.0)
+        axl = st.slider("axlambda (microns)", 100.0, 2000.0, 500.0, 50.0)
+        freq = pdur = rho = None  # Dynaphos defaults; rho follows from the current
     else:
         amp = st.slider("Amplitude (x threshold)", 0.0, 4.0, 2.0, 0.1)
         freq = st.slider("Frequency (Hz)", 10.0, 120.0, 30.0, 5.0)
@@ -76,20 +81,20 @@ freq_t = torch.zeros(N, device=device)
 pdur_t = torch.zeros(N, device=device)
 for e in idx:
     amp_t[e] = amp
-    if not cortical:
+    if freq is not None:
         freq_t[e] = freq
         pdur_t[e] = pdur
 
 action = Action(
     amp=amp_t,
-    freq=None if cortical else freq_t,
-    phase_dur=None if cortical else pdur_t,
+    freq=None if freq is None else freq_t,
+    phase_dur=None if pdur is None else pdur_t,
     rho=rho,
     axlambda=None if cortical else axl,
     pose=Pose(),
 )
 
-if model == "dynaphos":
+if model in ("dynaphos", "dynaphos_axonmap"):
     img = percept_model.predict_sequence(action, 10)[-1].detach().cpu().numpy()
 else:
     img = percept_model.forward(action).detach().cpu().numpy()

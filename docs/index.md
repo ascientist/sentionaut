@@ -20,7 +20,8 @@ Three axes swap independently via a `Config`:
   PRIMA, grid; cortical: Orion, Cortivis, ICVP, Neuralink)
 - **Topography** — visual-field ↔ tissue map (Jansonius axon map; Polimeni 2006;
   optional Neuropythy MRI)
-- **Percept model** — phosphene physics (`axonmap`, `scoreboard`, `dynaphos`)
+- **Percept model** — phosphene physics (`axonmap`, `scoreboard`, `dynaphos`,
+  `dynaphos_axonmap` / `dynaphos_axonmap_jax`)
 
 Implants and topography are supporting geometry. The percept models (and the
 learned world model) are classified by **modality** — see
@@ -33,6 +34,7 @@ learned world model) are classified by **modality** — see
 | [Axon map](models/axonmap.md) | `brain2vision` | retinal | Granley & Beyeler 2021 |
 | [Scoreboard](models/scoreboard.md) | `brain2vision` | cortical | Beyeler et al. 2019 |
 | [Dynaphos](models/dynaphos.md) | `brain2vision` | cortical | van der Grinten et al. 2024 |
+| [Dynaphos × axon map](models/dynaphos-axonmap.md) | `brain2vision` | retinal | van der Grinten et al. 2024 + Beyeler et al. 2019 |
 | [World model](models/world-model.md) | `brain2vision` | multi | learned (no paper) |
 
 ## Closed-loop control
