@@ -12,6 +12,8 @@ Scientific Reports 9, 9199 (2019).
 [doi:10.1038/s41598-019-45416-4](https://doi.org/10.1038/s41598-019-45416-4)
 
 Source of the axon-map spatial model and the Gaussian scoreboard baseline.
+Also the axon layout of the Dynaphos × axon map hybrid
+([dynaphos_axonmap](models/dynaphos-axonmap.md)).
 
 ## Granley & Beyeler 2021
 
@@ -43,3 +45,5 @@ eLife 13, e85812 (2024).
 
 Dynaphos cortical phosphene model (temporal charge / activation dynamics).
 Implemented here as `DynaphosTorch`.
+Its dynamics and current-spread size drive the Dynaphos × axon map hybrid
+([dynaphos_axonmap](models/dynaphos-axonmap.md)).

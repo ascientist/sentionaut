@@ -11,6 +11,7 @@ stimulation in, predicted visual percept out. See
 | [axonmap](axonmap.md) | `BiphasicAxonMapTorch` | `brain2vision` | retinal | Granley & Beyeler 2021 |
 | [scoreboard](scoreboard.md) | `ScoreboardTorch` | `brain2vision` | cortical | Beyeler et al. 2019 |
 | [dynaphos](dynaphos.md) | `DynaphosTorch` | `brain2vision` | cortical | van der Grinten et al. 2024 |
+| [dynaphos_axonmap](dynaphos-axonmap.md) | `DynaphosAxonMapTorch` / `DynaphosAxonMapJax` | `brain2vision` | retinal | van der Grinten et al. 2024 + Beyeler et al. 2019 |
 | [world-model](world-model.md) | `UnifiedWorldModel` | `brain2vision` | multi | learned (no paper) |
 
 Torch ports are parity-tested against pulse2percept 0.9.0. Full citations live

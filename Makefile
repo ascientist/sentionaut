@@ -8,10 +8,13 @@ SEQ_LEN ?= 16
 MODEL ?= axonmap
 OUTDIR ?= artifacts
 
-.PHONY: setup dataset world demo animate demos train ablate neurostim neurostim-percept neurostim-canonical test lint format docs docs-serve clean
+.PHONY: setup setup-jax dataset world demo animate demos train ablate neurostim neurostim-percept neurostim-canonical test lint format docs docs-serve clean
 
 setup:
 	$(UV) sync $(ENV_FLAGS)
+
+setup-jax:
+	$(UV) sync $(ENV_FLAGS) --extra jax
 
 dataset:
 	$(UV) run sentionaut-generate --output $(DATASET) --samples $(SAMPLES)
@@ -27,6 +30,9 @@ animate:
 
 demos:
 	$(UV) run sentionaut-animate --model all --scenario sequence --outdir docs/assets/demos
+	$(UV) run sentionaut-animate --model dynaphos_axonmap --outdir artifacts
+	cp artifacts/dynaphos_axonmap.gif docs/assets/demos/dynaphos_axonmap_sweep.gif
+	$(UV) run python examples/dynaphos_axonmap_figures.py
 
 train:
 	$(UV) run sentionaut-train train --dataset $(WORLD_DATASET) --config configs/train.yaml

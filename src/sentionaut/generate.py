@@ -12,7 +12,7 @@ import numpy as np
 import torch
 
 from .core.base import Action, Pose
-from .core.config import CORTICAL_MODELS, Config
+from .core.config import CORTICAL_MODELS, UA_AMP_MODELS, Config
 from .core.device import get_device
 from .core.registry import build_components
 
@@ -20,6 +20,8 @@ DEFAULT_IMPLANT = {
     "axonmap": "argusii",
     "scoreboard": "orion",
     "dynaphos": "orion",
+    "dynaphos_axonmap": "argusii",
+    "dynaphos_axonmap_jax": "argusii",
 }
 
 
@@ -61,7 +63,7 @@ def sample_action(
         amp = np.zeros(n_electrodes, dtype=np.float32)
         freq = np.zeros(n_electrodes, dtype=np.float32)
         pdur = np.zeros(n_electrodes, dtype=np.float32)
-        amp_range = ranges.amp_cortical if cortical else ranges.amp_retinal
+        amp_range = ranges.amp_cortical if config.model in UA_AMP_MODELS else ranges.amp_retinal
         for e in idx:
             amp[e] = _uniform(rng, *amp_range)
             freq[e] = _uniform(rng, *ranges.freq)
@@ -103,10 +105,8 @@ def build_configs(models: list[str], base: Config) -> list[Config]:
 
 
 def _aux_maps(wm, state) -> tuple[np.ndarray, np.ndarray]:
-    from .models.dynaphos import DynaphosTorch
-
     H, W = wm.grid_shape
-    if isinstance(wm.model, DynaphosTorch):
+    if hasattr(wm.model, "rasterize_aux"):
         a_map, q_map = wm.model.rasterize_aux(state)
         return a_map.detach().cpu().numpy(), q_map.detach().cpu().numpy()
     return np.zeros((H, W), dtype=np.float32), np.zeros((H, W), dtype=np.float32)

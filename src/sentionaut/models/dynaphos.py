@@ -110,16 +110,8 @@ class DynaphosTorch(PerceptModel):
                 leaked[i] = leaked[i] + self.costim_kappa * amp[j] / dist2
         return leaked
 
-    def step(self, state: State | None, action: Action) -> State:
-        topo = self.topography
-        device = topo.grid_x.device
-        action = action.to(device)
-        if state is None:
-            state = self.initial_state(device)
-        A = state.aux["A"]
-        Q = state.aux["Q"]
-        sigma = state.aux["sigma"]
-
+    def _stim_inputs(self, action: Action, device) -> tuple[torch.Tensor, ...]:
+        """Per-electrode (amp, freq, p_dur) with co-stimulation leak and defaults."""
         amp = action.amp.to(device)
         amp = self._apply_costim(amp)
         n = amp.shape[0]
@@ -131,17 +123,37 @@ class DynaphosTorch(PerceptModel):
             p_dur = torch.full((n,), self.p_dur, device=device, dtype=amp.dtype)
         else:
             p_dur = action.phase_dur.to(device)
+        return amp, freq, p_dur
 
-        ploc, M, elec_left = self._phosphene_geometry(action.pose)
+    def _dynamics(self, A, Q, amp, freq, p_dur) -> tuple[torch.Tensor, ...]:
+        """Eqs 6-13 of van der Grinten 2024: returns (A, Q, D, brightness).
+
+        ``D`` is the diameter of activated tissue (mm) from the current spread.
+        """
         I0 = self.rheobase
         K = self.excitability
         Ieff = torch.clamp((amp - I0 - Q) * freq * (p_dur / 1000.0), min=0.0)
         Q = Q + ((-Q / (self.tau_trace / 1000.0)) + Ieff * self.kappa_trace) * (self.dt / 1000.0)
-        D = 2.0 * torch.sqrt(torch.clamp(amp, min=0.0) / K)
-        P = D / M
-        sigma = torch.where(amp > 0, torch.clamp(P / 2.0, min=1e-22), sigma)
+        # Double-where keeps sqrt's backward finite (0 * inf = NaN) for amp <= 0.
+        on = amp > 0
+        D = torch.where(on, 2.0 * torch.sqrt(torch.where(on, amp, torch.ones_like(amp)) / K), 0.0)
         A = A + ((-A / (self.tau_act / 1000.0)) + Ieff * 1e-6) * (self.dt / 1000.0)
         brightness = torch.sigmoid(self.sig_slope * (A - self.a50))
+        return A, Q, D, brightness
+
+    def step(self, state: State | None, action: Action) -> State:
+        topo = self.topography
+        device = topo.grid_x.device
+        action = action.to(device)
+        if state is None:
+            state = self.initial_state(device)
+        sigma = state.aux["sigma"]
+
+        amp, freq, p_dur = self._stim_inputs(action, device)
+        ploc, M, elec_left = self._phosphene_geometry(action.pose)
+        A, Q, D, brightness = self._dynamics(state.aux["A"], state.aux["Q"], amp, freq, p_dur)
+        P = D / M
+        sigma = torch.where(amp > 0, torch.clamp(P / 2.0, min=1e-22), sigma)
 
         image = self._render(A, sigma, brightness, ploc, elec_left)
         if self.max_percept is not None:

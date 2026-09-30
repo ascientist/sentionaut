@@ -26,7 +26,10 @@ Three axes are independently swappable via a `Config`:
   `Polimeni2006Map` (dva <-> cortex, split hemispheres, cortical magnification),
   plus an optional `neuropythy` MRI-derived map (lazy, falls back to Polimeni).
 - **PerceptModel**: retinal `axonmap` (`BiphasicAxonMapTorch`), cortical
-  `scoreboard` (`ScoreboardTorch`), cortical `dynaphos` (`DynaphosTorch`).
+  `scoreboard` (`ScoreboardTorch`), cortical `dynaphos` (`DynaphosTorch`), and
+  retinal `dynaphos_axonmap` (Dynaphos dynamics rendered through the axon map;
+  PyTorch `DynaphosAxonMapTorch` or JAX `DynaphosAxonMapJax` as
+  `dynaphos_axonmap_jax`, see [docs/models/dynaphos-axonmap.md](docs/models/dynaphos-axonmap.md)).
 
 ```python
 import torch
@@ -58,6 +61,7 @@ percept = model.forward(Action(amp=amp,
 | axonmap | × threshold (unitless) | 0.5–3.0 |
 | scoreboard | µA | 50–300 |
 | dynaphos | µA | 50–300 |
+| dynaphos_axonmap(_jax) | µA | 50–300 |
 
 Dataset generation and the Streamlit demo use these bands; parity tests keep
 their own fixed values.
@@ -112,7 +116,9 @@ GitHub Pages serves it at
 make setup        # uv sync --extra dev
 ```
 
-Everything runs through `uv` / `uv run`.
+Everything runs through `uv` / `uv run`. The JAX backend is optional:
+`make setup-jax` (CPU) or `uv sync --extra dev --extra jax --extra jax-cuda`
+(NVIDIA GPU).
 
 ## Parity with pulse2percept
 
@@ -134,7 +140,9 @@ make animate MODEL=all OUTDIR=artifacts
 Renders one dual-panel (percept | tissue-geometry) clip per physics model on
 MPS: the Axon Map sweeps `rho`/`axlambda` and translates the array; the cortical
 Scoreboard and Dynaphos sweep the implant to expose cortical-magnification growth
-(Dynaphos also shows temporal charge buildup). Outputs go to `artifacts/`.
+(Dynaphos also shows temporal charge buildup); Dynaphos × axon map sweeps
+`axlambda` (streak length), then the current (`rho = sqrt(I/K)`), then fades one
+pulse. Outputs go to `artifacts/`.
 
 ```bash
 make demos
@@ -143,7 +151,9 @@ make demos
 Renders the documentation demos: the implant stays fixed and one zone of
 neighbouring electrodes receives a stimulation sequence (single electrodes,
 pairs, an amplitude ramp, then a pulse train). The GIFs are written to
-`docs/assets/demos/` and shown on each model page (`docs/models/*.md`).
+`docs/assets/demos/` and shown on each model page (`docs/models/*.md`). For
+Dynaphos × axon map it also renders a peripheral-zone sequence, the sweep and
+the didactic figures (`examples/dynaphos_axonmap_figures.py`).
 
 ## Interactive demo
 

@@ -15,7 +15,14 @@ from ..core.config import Config
 class WorldTransitionDataset(Dataset):
     """Yields ``(s_t, s_tp1, action, model_id, implant_id, topo_params)`` transitions."""
 
-    MODEL_IDS = {"axonmap": 0, "scoreboard": 1, "dynaphos": 2}
+    # Both backends of the Dynaphos x axon-map hybrid are one physics, one id.
+    MODEL_IDS = {
+        "axonmap": 0,
+        "scoreboard": 1,
+        "dynaphos": 2,
+        "dynaphos_axonmap": 3,
+        "dynaphos_axonmap_jax": 3,
+    }
     IMPLANT_IDS = {
         "argusii": 0,
         "alphaims": 1,
@@ -54,7 +61,7 @@ class WorldTransitionDataset(Dataset):
 
     @property
     def n_models(self) -> int:
-        return len(self.MODEL_IDS)
+        return max(self.MODEL_IDS.values()) + 1
 
     @property
     def n_implants(self) -> int:
