@@ -62,7 +62,9 @@ a one-step fit from hiding a drive that only looks right for a single `dt`.
 
 A world model here is `f(B_t, action_t) → B_{t+1}` (Ha and Schmidhuber, 2018).
 `B` is already a sufficient state of the teacher, so there is no recurrent
-latent (DreamerV3) and no video context (Genie). The percept image is the
+latent (DreamerV3) and no video context (Genie). The
+[video world model](axonmap-video.md) is the Genie-style counterpart that
+learns the fade instead of being given it. The percept image is the
 product, so the loss stays on that image rather than on a JEPA embedding
 (V-JEPA 2). The field is smooth and low-entropy, so a diffusion sampler
 (DIAMOND, Cosmos) would add a loop we would then have to run on CPU.

@@ -81,3 +81,25 @@ ICCV 2023.
 
 Adaptive layer norm, used here to condition on `rho` and `axlambda`. The
 student is not a diffusion model.
+
+## Bruce et al. 2024
+
+Jake Bruce, Michael Dennis, Ashley Edwards, et al.
+*Genie: Generative Interactive Environments.*
+ICML 2024.
+[arXiv:2402.15391](https://arxiv.org/abs/2402.15391)
+
+The spatiotemporal transformer block of `AxonVideoWorld`: spatial attention
+inside a frame, causal temporal attention across frames. Its latent action
+model and VQ tokens are not used, because the stimulation is known and the
+percept is continuous.
+
+## Valevski et al. 2024
+
+Dani Valevski, Yaniv Leviathan, Moab Arar, Shlomi Fruchter.
+*Diffusion Models Are Real-Time Game Engines.*
+ICLR 2025.
+[arXiv:2408.14837](https://arxiv.org/abs/2408.14837)
+
+Noise on context frames during training, so an autoregressive model tolerates
+its own errors when it runs free.

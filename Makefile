@@ -15,8 +15,9 @@ AXON_BATCH ?= 256
 AXON_DIM ?= 64
 AXON_DEPTH ?= 2
 AXON_WORKERS ?= 3
+STREAM_DATASET ?= data/axon_stream.h5
 
-.PHONY: setup dataset world demo animate demos train ablate axon-world neurostim neurostim-percept neurostim-canonical test lint format docs docs-serve clean
+.PHONY: setup dataset world demo animate demos train ablate axon-world axon-video neurostim neurostim-percept neurostim-canonical test lint format docs docs-serve clean
 
 setup:
 	$(UV) sync $(ENV_FLAGS)
@@ -53,6 +54,21 @@ axon-world:
 	$(UV) run sentionaut-axon-report --dataset $(AXON_DATASET) --ckpt $(AXON_CKPT) \
 		--timing-gen data/timing_gen.json --timing-train data/timing_train.json \
 		--out-dir docs/assets/axon-world
+
+# Genie-style video model on teacher streams, with the exact-fade student as baseline.
+axon-video:
+	$(UV) run sentionaut-world --output $(STREAM_DATASET) --model axonmap --stream --episodes 512 \
+		--sequence-length 32 --silent-tail 8 --xrange -12 12 --yrange -12 12 --xystep 0.5 \
+		--timing data/timing_gen_stream.json
+	$(UV) run sentionaut-axon-video train --dataset $(STREAM_DATASET) --ckpt data/axon_video.pt \
+		--timing data/timing_train_video.json --epochs 40 --batch-size 16 --num-workers 2
+	$(UV) run sentionaut-distill-axon --dataset $(STREAM_DATASET) --ckpt data/axon_stream_markov.pt \
+		--timing data/timing_train_markov.json --epochs 40 --batch-size 16 --lr 5e-4 --rollout-k 16 \
+		--train-stride 8 --val-stride 16 --dim 128 --depth 4 --num-workers 2
+	$(UV) run sentionaut-axon-video report --dataset $(STREAM_DATASET) --ckpt data/axon_video.pt \
+		--baseline-ckpt data/axon_stream_markov.pt --timing-train data/timing_train_video.json \
+		--timing-baseline data/timing_train_markov.json --timing-gen data/timing_gen_stream.json \
+		--out-dir docs/assets/axon-video
 
 neurostim:
 	$(UV) run python examples/neurostim_tutorial.py

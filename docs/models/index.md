@@ -13,6 +13,7 @@ stimulation in, predicted visual percept out. See
 | [dynaphos](dynaphos.md) | `DynaphosTorch` | `brain2vision` | cortical | van der Grinten et al. 2024 |
 | [world-model](world-model.md) | `UnifiedWorldModel` | `brain2vision` | multi | learned (no paper) |
 | [axonmap-world](axonmap-world.md) | `AxonMapWorld` | `brain2vision` | retinal | learned from axon map |
+| [axonmap-video](axonmap-video.md) | `AxonVideoWorld` | `brain2vision` | retinal | learned from axon-map video |
 
 Torch ports are parity-tested against pulse2percept 0.9.0. Full citations live
 on [References](../references.md).

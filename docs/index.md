@@ -39,6 +39,7 @@ learned world model) are classified by **modality** — see
 | [Dynaphos](models/dynaphos.md) | `brain2vision` | cortical | van der Grinten et al. 2024 |
 | [World model](models/world-model.md) | `brain2vision` | multi | learned (no paper) |
 | [Axon-map world model](models/axonmap-world.md) | `brain2vision` | retinal | distilled from axon map |
+| [Axon-map video world model](models/axonmap-video.md) | `brain2vision` | retinal | learned from axon-map video |
 
 ## Closed-loop control
 
