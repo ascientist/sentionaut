@@ -48,6 +48,7 @@ learned world model) are classified by **modality** — see
 | --- | --- | --- | --- |
 | [Axon map](models/axonmap.md) | `brain2vision` | retinal | Granley & Beyeler 2021 |
 | [Axon-map world model](models/axonmap-world.md) | `brain2vision` | retinal | distilled from axon map |
+| [Axon-map video world model](models/axonmap-video.md) | `brain2vision` | retinal | learned from axon-map video |
 | [Scoreboard](models/scoreboard.md) | `brain2vision` | cortical | Beyeler et al. 2019 |
 | [Dynaphos](models/dynaphos.md) | `brain2vision` | cortical | van der Grinten et al. 2024 |
 | [World model](models/world-model.md) | `brain2vision` | multi | learned (no paper) |

@@ -342,7 +342,13 @@ def _rollout_loss(model: AxonMapWorld, batch: dict) -> torch.Tensor:
 
 
 def _save_ckpt(
-    path: Path, model, opt, epoch: int, history: list[float], val_history: list[float]
+    path: Path,
+    model,
+    opt,
+    epoch: int,
+    history: list[float],
+    val_history: list[float],
+    timers: dict | None = None,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(
@@ -358,6 +364,8 @@ def _save_ckpt(
             "heads": model.blocks[0].cross.num_heads,
             "dt_ms": model.dt_ms,
             "arch": getattr(model, "arch", None),
+            # A requeued job resumes these, so timing.json covers the whole run.
+            "timers": timers or {},
             "torch_rng": torch.get_rng_state(),
             "numpy_rng": np.random.get_state(),
         },
@@ -365,13 +373,18 @@ def _save_ckpt(
     )
 
 
-def _load_ckpt(path: Path, model, opt) -> tuple[int, list[float], list[float]]:
+def _load_ckpt(path: Path, model, opt) -> tuple[int, list[float], list[float], dict]:
     ckpt = torch.load(path, map_location="cpu", weights_only=False)
     model.load_state_dict(ckpt["model"])
     opt.load_state_dict(ckpt["optimizer"])
     torch.set_rng_state(ckpt["torch_rng"])
     np.random.set_state(ckpt["numpy_rng"])
-    return int(ckpt["epoch"]), list(ckpt["loss_history"]), list(ckpt.get("val_history", []))
+    return (
+        int(ckpt["epoch"]),
+        list(ckpt["loss_history"]),
+        list(ckpt.get("val_history", [])),
+        dict(ckpt.get("timers", {})),
+    )
 
 
 def load_axon_world(path: str | Path, device: torch.device | str | None = None) -> AxonMapWorld:
@@ -498,13 +511,14 @@ def distill_hdf5(
     start_epoch = 0
     history: list[float] = []
     val_history: list[float] = []
+    timers: dict = {}
     ckpt = Path(ckpt_path) if ckpt_path else None
     if init_ckpt and (ckpt is None or not ckpt.exists()):
         blob = torch.load(Path(init_ckpt), map_location="cpu", weights_only=False)
         model.load_state_dict(blob["model"])
         model.to(device)
     if ckpt is not None and ckpt.exists():
-        start_epoch, history, val_history = _load_ckpt(ckpt, model, opt)
+        start_epoch, history, val_history, timers = _load_ckpt(ckpt, model, opt)
         model.to(device)
 
     train_ds = AxonSequenceDataset(dataset_path, train_w, scale)
@@ -523,10 +537,10 @@ def distill_hdf5(
         stop["flag"] = True
 
     signal.signal(signal.SIGTERM, _on_term)
-    t_load = 0.0
-    t_step = 0.0
-    t_val = 0.0
-    n_samples = 0
+    t_load = float(timers.get("data_load_s", 0.0))
+    t_step = float(timers.get("forward_backward_s", 0.0))
+    t_val = float(timers.get("validation_s", 0.0))
+    n_samples = int(timers.get("n_samples", 0))
     try:
         for epoch in range(start_epoch, epochs):
             model.train()
@@ -554,7 +568,15 @@ def distill_hdf5(
             val_history.append(_eval_mse(model, val_loader, device, pin, bf16, loss_fn))
             t_val += time.perf_counter() - t0
             if ckpt is not None:
-                _save_ckpt(ckpt, model, opt, epoch + 1, history, val_history)
+                peak = torch.cuda.max_memory_allocated() if device.type == "cuda" else 0
+                timers = {
+                    "data_load_s": t_load,
+                    "forward_backward_s": t_step,
+                    "validation_s": t_val,
+                    "n_samples": n_samples,
+                    "peak_gpu_mem_bytes": max(int(peak), int(timers.get("peak_gpu_mem_bytes", 0))),
+                }
+                _save_ckpt(ckpt, model, opt, epoch + 1, history, val_history, timers)
             if stop["flag"]:
                 break
         if not val_history:
@@ -565,6 +587,7 @@ def distill_hdf5(
         val_ds.close()
 
     peak = torch.cuda.max_memory_allocated() if device.type == "cuda" else 0
+    peak = max(int(peak), int(timers.get("peak_gpu_mem_bytes", 0)))
     timing = {
         "data_load_s": t_load,
         "forward_backward_s": t_step,
@@ -585,6 +608,8 @@ def distill_hdf5(
         "n_parameters": sum(p.numel() for p in model.parameters()),
         "bf16": bool(bf16),
         "device": str(device),
+        "epochs_done": len(history),
+        "completed": len(history) >= epochs,
     }
     if timing_path is not None:
         path = Path(timing_path)
@@ -708,6 +733,8 @@ def cli(
         val_stride=val_stride,
         init_ckpt=init_ckpt,
     )
+    if not out["completed"]:
+        raise SystemExit(f"stopped after {out['epochs_done']}/{epochs} epochs; rerun to resume")
     click.echo(
         f"val_mse={out['val_mse']:.6f} samples_per_s={out['samples_per_s']:.2f} "
         f"loss_history={out['loss_history']}"

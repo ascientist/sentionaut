@@ -122,7 +122,9 @@ has to learn the change, including the fade the drive student was given.
 Use the drive student when you trust the ODE and want the smallest error on
 the streak. Use the video student when the thing you want to learn is the
 dynamics, or when a later teacher does not have a fade equation you can
-write down.
+write down. [The video world model page](axonmap-video.md#results) has its
+measured results: the learned fade, free-running streams, and a matched
+comparison against the drive student.
 
 ```python
 from sentionaut.learned.axon_world import AxonMapWorld
