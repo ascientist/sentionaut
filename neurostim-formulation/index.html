@@ -1,0 +1,1753 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="GPU-native prosthetic vision world models, classified by modality.">
+      
+      
+      
+        <link rel="canonical" href="https://ascientist.github.io/sentionaut/neurostim-formulation/">
+      
+      
+        <link rel="prev" href="../models/axonmap-world/">
+      
+      
+        <link rel="next" href="../neurostim/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/favicon.png">
+      <meta name="generator" content="zensical-0.0.57">
+    
+    
+      
+        <title>Canonical formulation - Sentionaut</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../assets/stylesheets/modern/main.5da3a30f.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../assets/stylesheets/modern/palette.812a03bb.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="red">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="Navigation"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#canonical-formulation" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="./.." title="Sentionaut" class="md-header__button md-logo" aria-label="Sentionaut" data-md-component="logo">
+      
+  <img src="../assets/sentionaut-mark.png" alt="Sentionaut">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="Navigation">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Sentionaut
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Canonical formulation
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="red"  aria-hidden="true"  type="radio" name="__palette" id="__palette_0">
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="Search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/ascientist/sentionaut" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ascientist/sentionaut
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="./.." title="Sentionaut" class="md-nav__button md-logo" aria-label="Sentionaut" data-md-component="logo">
+      
+  <img src="../assets/sentionaut-mark.png" alt="Sentionaut">
+
+    </a>
+    Sentionaut
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ascientist/sentionaut" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ascientist/sentionaut
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Getting started
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  User guide
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../nomenclature/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Nomenclature
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Models
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  Models
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Models
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../models/demos/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Stimulation demos: how to read them
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../models/axonmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Axon map
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../models/axonmap-world/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  From the axon map to a world model
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../models/scoreboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Scoreboard
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../models/dynaphos/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Dynaphos
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../models/world-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  World model
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../models/axonmap-world/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  From the axon map to a world model
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  NeuroStim (control)
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  NeuroStim (control)
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Canonical formulation
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Canonical formulation
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-variables-and-timescales" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1. Variables and timescales
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-generative-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        2. Generative model
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-what-random-patients-means" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        3. What "random patients" means
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-the-linear-canonical-form" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        4. The linear canonical form
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-where-images-enter-two-generalisation-axes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        5. Where images enter: two generalisation axes
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-the-canonical-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        6. The canonical problem
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-the-ladder-add-one-difficulty-at-a-time" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        7. The ladder: add one difficulty at a time
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-three-experiments" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        8. Three experiments
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-mapping-to-the-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        9. Mapping to the code
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-what-this-abstraction-leaves-out" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        10. What this abstraction leaves out
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        References
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../neurostim/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  NeuroStim: closed-loop control benchmark
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../neurostim-percept/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  NeuroStim-Percept: image targets through a world model
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../references/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  References
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-variables-and-timescales" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1. Variables and timescales
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-generative-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        2. Generative model
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-what-random-patients-means" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        3. What "random patients" means
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-the-linear-canonical-form" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        4. The linear canonical form
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-where-images-enter-two-generalisation-axes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        5. Where images enter: two generalisation axes
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-the-canonical-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        6. The canonical problem
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-the-ladder-add-one-difficulty-at-a-time" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        7. The ladder: add one difficulty at a time
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-three-experiments" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        8. Three experiments
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-mapping-to-the-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        9. Mapping to the code
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-what-this-abstraction-leaves-out" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        10. What this abstraction leaves out
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        References
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+  
+  
+
+
+<h1 id="canonical-formulation">Canonical formulation</h1>
+<p><a href="../">Home</a> · <a href="../getting-started/">Getting started</a> · <a href="../user-guide/">User guide</a> · <a href="../nomenclature/">Nomenclature</a> · <a href="../models/">Models</a> · <a href="../neurostim/">NeuroStim</a> · <a href="../references/">References</a></p>
+<p>This page strips closed-loop neurostimulation down to a standard
+mathematical object:</p>
+<blockquote>
+<p><strong>Adaptive tracking over a population of random, slowly drifting,
+partially observed, controlled stochastic dynamical systems.</strong></p>
+</blockquote>
+<p>Neurostimulation stops being the primitive. It becomes one instance of
+stochastic control plus system identification. <a href="../neurostim/">NeuroStim</a> and
+<a href="../neurostim-percept/">NeuroStim-Percept</a> are this problem with extra
+nonlinearities. A runnable linear version lives in
+<code>src/sentionaut/neurostim/canonical.py</code> and
+<code>examples/neurostim_canonical_tutorial.py</code>. Every claim below that can be
+checked numerically is checked there.</p>
+<h2 id="1-variables-and-timescales">1. Variables and timescales</h2>
+<table>
+<thead>
+<tr>
+<th>Symbol</th>
+<th>Meaning</th>
+<th>Timescale</th>
+<th>How it changes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><span class="arithmatex">\(\theta_p\)</span></td>
+<td>the patient: anatomy, electrode placement, connectivity, stimulation transfer</td>
+<td>constant per patient</td>
+<td>sampled once, <span class="arithmatex">\(\theta_p \sim P_\Theta\)</span></td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(\phi_t\)</span></td>
+<td>exogenous drift: interface, excitability, plasticity</td>
+<td>minutes to months</td>
+<td><span class="arithmatex">\(\phi_{t+1} = \rho\,\phi_t + \eta_t\)</span>, with <span class="arithmatex">\(\rho \approx 1\)</span></td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(h_t\)</span></td>
+<td>stimulation-induced adaptation or fatigue</td>
+<td>seconds to minutes</td>
+<td><span class="arithmatex">\(h_{t+1} = \rho_h h_t + \kappa \lvert u_t \rvert\)</span>, <strong>driven by the control</strong></td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(x_t\)</span></td>
+<td>fast neural state</td>
+<td>milliseconds to seconds</td>
+<td>the controlled dynamics</td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(u_t \in \mathbb R^m\)</span></td>
+<td>stimulation on <span class="arithmatex">\(m\)</span> electrodes</td>
+<td>per step</td>
+<td>chosen by the policy</td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(o_t\)</span></td>
+<td>what the implant measures</td>
+<td>per step</td>
+<td><span class="arithmatex">\(o_t = g(x_t) + v_t\)</span></td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(z_t\)</span></td>
+<td>percept or behaviour</td>
+<td>per step</td>
+<td><span class="arithmatex">\(z_t = D(x_t)\)</span></td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(r,\ z^\star = E(r)\)</span></td>
+<td>target image and its representation</td>
+<td>per trial</td>
+<td><span class="arithmatex">\(r \sim P_R\)</span>, <strong>independent of</strong> <span class="arithmatex">\(\theta\)</span></td>
+</tr>
+</tbody>
+</table>
+<p>Two corrections to the informal picture:</p>
+<ul>
+<li><strong>Drift and adaptation are different objects.</strong> <span class="arithmatex">\(\phi_t\)</span> is exogenous:
+  the controller can only track it. <span class="arithmatex">\(h_t\)</span> depends on <span class="arithmatex">\(u_t\)</span>: it is part of
+  the state (so <span class="arithmatex">\(x_t\)</span> is really <span class="arithmatex">\((x_t, h_t)\)</span>), it can be predicted from the
+  controller's own actions, and it can be planned around. Merging the two
+  into "the brain drifts" hides the fact that one of them the policy causes.</li>
+<li><strong>The target is fixed per trial</strong>, <span class="arithmatex">\(r\)</span>, not a fresh <span class="arithmatex">\(r_t\)</span> every step. A
+  percept has to be built and held, and that is what makes the problem one of
+  tracking a set-point rather than of following noise.</li>
+</ul>
+<h2 id="2-generative-model">2. Generative model</h2>
+<div class="arithmatex">\[
+\theta \sim P_\Theta,\qquad r \sim P_R,\qquad \phi_0 \sim P_\Phi,\qquad x_0 \sim P_{X_0}
+\]</div>
+<div class="arithmatex">\[
+x_{t+1} = f_{\theta,\phi_t}(x_t, u_t) + w_t,\qquad
+o_t = g_{\theta,\phi_t}(x_t) + v_t,\qquad
+z_t = D_\theta(x_t),\qquad
+\phi_{t+1} \sim P(\phi_{t+1} \mid \phi_t)
+\]</div>
+<div class="arithmatex">\[
+u_t \sim \pi\left(u_t \mid z^\star, o_{\le t}, u_{&lt;t}\right)
+\]</div>
+<p>The hidden state of the full control problem is
+<span class="arithmatex">\(s_t = (x_t, \phi_t, \theta)\)</span>. The three parts are fast, slow and fixed.
+The policy never observes <span class="arithmatex">\(\theta\)</span>, <span class="arithmatex">\(\phi_t\)</span> or <span class="arithmatex">\(x_t\)</span>.</p>
+<h2 id="3-what-random-patients-means">3. What "random patients" means</h2>
+<p>A patient is <strong>not</strong> a category label <span class="arithmatex">\(p \in \{1,\dots,N\}\)</span>. A patient is an
+independent draw of a whole dynamical system:</p>
+<div class="arithmatex">\[
+\theta_p \overset{\text{iid}}{\sim} P_\Theta
+\quad\Longrightarrow\quad
+\mathcal M_p = \left(f_{\theta_p}, g_{\theta_p}, D_{\theta_p}\right) \sim P(\mathcal M).
+\]</div>
+<p>Training means learning to control <strong>a random member of a family of
+systems</strong>, not patients 1, 2, 3 in turn. The objective averages over the
+family:</p>
+<div class="arithmatex">\[
+J(\pi) = \mathbb E_{\theta \sim P_\Theta}\,\mathbb E_{r \sim P_R}\,
+\mathbb E_{\phi, w, v}\left[\sum_{t=0}^{T} \ell\left(z_t, z^\star\right) + \lambda \lVert u_t \rVert_R^2\right].
+\]</div>
+<p>Four consequences, each easy to miss:</p>
+<ol>
+<li><strong>The Bayes-optimal policy acts on a belief.</strong> Unknown <span class="arithmatex">\(\theta\)</span> makes
+   this a Bayes-adaptive POMDP (Duff 2002). The sufficient statistic is the
+   posterior <span class="arithmatex">\(b_t = p(x_t, \phi_t, \theta \mid o_{\le t}, u_{&lt;t})\)</span>. Meta-RL
+   methods such as VariBAD (Zintgraf et al. 2020) approximate it with a
+   learned encoder of the history. The calibration sweeps in the other
+   tutorials are a hand-designed version of that encoder.</li>
+<li><strong>The separation principle fails.</strong> For a <em>known</em> linear-Gaussian system
+   the optimal controller is a Kalman filter plus LQR (LQG). With unknown
+   <span class="arithmatex">\(\theta\)</span>, stimulation both controls the brain and teaches you about the
+   patient. This is dual control (Feldbaum 1960): probing has value, and
+   certainty equivalence (estimate, then act as if the estimate were true)
+   is not optimal. The tutorial shows its failure mode: a heavy tail of
+   episodes where a bad early estimate produces huge gains.</li>
+<li><strong>Only the input–output map is identifiable.</strong> <span class="arithmatex">\((A, B, C, D)\)</span> and
+   <span class="arithmatex">\((TAT^{-1}, TB, CT^{-1}, DT^{-1})\)</span> produce identical data for any
+   invertible <span class="arithmatex">\(T\)</span>. Only the Markov parameters <span class="arithmatex">\(D A^k B\)</span> can be recovered. A
+   controller needs nothing more, but "recover the patient's connectivity"
+   is not a well-posed sub-goal.</li>
+<li><strong>Within one patient, <span class="arithmatex">\(\theta\)</span> and <span class="arithmatex">\(\phi_t\)</span> can't be told apart.</strong> Data
+   only ever show the current system <span class="arithmatex">\(\left(A_{\theta,\phi_t},
+   B_{\theta,\phi_t}\right)\)</span>. The split matters through the <em>priors</em>:
+   between-patient spread versus drift rate. It is useful when
+   identification is much faster than drift, <span class="arithmatex">\(T_{\mathrm{id}} \ll
+   1/(1-\rho)\)</span>.</li>
+</ol>
+<h2 id="4-the-linear-canonical-form">4. The linear canonical form</h2>
+<p>Take <span class="arithmatex">\(f\)</span> linear and let the drift enter the parameters. That gives a
+linear-parameter-varying (LPV) system (Shamma &amp; Athans 1991), where every
+matrix has a stimulation meaning:</p>
+<div class="arithmatex">\[
+x_{t+1} = A_{\theta,\phi_t}\, x_t + B_{\theta,\phi_t}\, u_t + w_t,\qquad
+o_t = C_\theta x_t + v_t,\qquad
+z_t = D_\theta x_t .
+\]</div>
+<table>
+<thead>
+<tr>
+<th>Matrix</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><span class="arithmatex">\(A_\theta\)</span></td>
+<td>endogenous dynamics and connectivity. Complex eigenvalues are oscillatory modes (rhythms)</td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(B_\theta\)</span></td>
+<td>stimulation transfer: electrode currents to neural perturbation. Its inter-patient spread is <strong>the</strong> personalisation problem</td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(C_\theta\)</span></td>
+<td>what the implant records</td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(D_\theta\)</span></td>
+<td>neural state to percept</td>
+</tr>
+</tbody>
+</table>
+<p>The code uses <span class="arithmatex">\(n = 6\)</span> latents (three damped oscillatory modes), <span class="arithmatex">\(m = 4\)</span>
+electrodes and a 3-D percept. Patients are sampled as
+<span class="arithmatex">\(B_\theta = \bar B + \sigma_B\, b\, G\)</span>, with <span class="arithmatex">\(G\)</span> standard Gaussian and <span class="arithmatex">\(b\)</span> the
+entry scale of <span class="arithmatex">\(\bar B\)</span>, plus a small spread on <span class="arithmatex">\(A\)</span>. Drift acts on <span class="arithmatex">\(B\)</span>:
+<span class="arithmatex">\(B_t = B_\theta + \phi_t\)</span>.</p>
+<p><strong>Reachability sets the floor on error.</strong> At steady state
+<span class="arithmatex">\(z_{ss} = D(I-A)^{-1}B\,u =: G\,u\)</span>. The targets you can reach are
+<span class="arithmatex">\(G\,\mathcal U_{\mathrm{safe}}\)</span>. If <span class="arithmatex">\(m &lt; \dim z\)</span>, the best error for an
+unconstrained input is <span class="arithmatex">\(\lVert (I - GG^{+})\,z^\star \rVert^2 &gt; 0\)</span>. This is
+the linear counterpart of the autoencoder ceiling in
+<a href="../neurostim-percept/">NeuroStim-Percept</a>. There the floor comes from
+representation, here from actuation.</p>
+<p><strong>Partial observation has a minimum memory.</strong> An input–output model of an
+order-<span class="arithmatex">\(n\)</span> system seen through <span class="arithmatex">\(p\)</span> outputs needs a lag of at least
+<span class="arithmatex">\(\lceil n/p \rceil\)</span> (the observability index). With <span class="arithmatex">\(o = Dx\)</span> that is
+<span class="arithmatex">\(\lceil 6/3 \rceil = 2\)</span>, which is what the adaptive controller uses.</p>
+<h2 id="5-where-images-enter-two-generalisation-axes">5. Where images enter: two generalisation axes</h2>
+<p>Images enter only through the target, <span class="arithmatex">\(z^\star = E(r)\)</span> with <span class="arithmatex">\(r \sim P_R\)</span>, and
+<span class="arithmatex">\(P_R\)</span> is <strong>the same for every patient</strong>: a common image set. So there are two
+independent generalisation axes, plus their combination:</p>
+<table>
+<thead>
+<tr>
+<th>Axis</th>
+<th>Train</th>
+<th>Test</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>image</td>
+<td>patient <span class="arithmatex">\(\theta\)</span>, images <span class="arithmatex">\(\mathcal I_{\mathrm{train}}\)</span></td>
+<td>same <span class="arithmatex">\(\theta\)</span>, unseen <span class="arithmatex">\(r\)</span></td>
+</tr>
+<tr>
+<td>patient</td>
+<td>patients <span class="arithmatex">\(\{\theta_i\}\)</span>, common images</td>
+<td>new <span class="arithmatex">\(\theta \sim P_\Theta\)</span>, familiar images</td>
+</tr>
+<tr>
+<td>both</td>
+<td>–</td>
+<td>new <span class="arithmatex">\(\theta\)</span> <strong>and</strong> new <span class="arithmatex">\(r\)</span></td>
+</tr>
+</tbody>
+</table>
+<p><strong>In the linear-quadratic problem, image generalisation is free.</strong> The
+optimal tracker is <span class="arithmatex">\(u_t = u_{ss}(z^\star) - K\left(\hat x_t -
+x_{ss}(z^\star)\right)\)</span>. Here <span class="arithmatex">\(K\)</span> does not depend on <span class="arithmatex">\(z^\star\)</span>, and
+<span class="arithmatex">\((x_{ss}, u_{ss})\)</span> are linear in <span class="arithmatex">\(z^\star\)</span> as long as no constraint is
+active. The policy is therefore affine in the target, and an unseen image is
+no harder than a seen one. Image generalisation only becomes a real axis
+when:</p>
+<ul>
+<li><span class="arithmatex">\(E\)</span> or <span class="arithmatex">\(D\)</span> is nonlinear, for example images through a decoder;</li>
+<li>a constraint is active, <span class="arithmatex">\(u \in \mathcal U_{\mathrm{safe}}\)</span>; or</li>
+<li>the policy is a learned function approximator.</li>
+</ul>
+<p><a href="../neurostim-percept/">NeuroStim-Percept</a> has all three. There, the random
+patient evaluation tests <strong>both</strong> axes at once: held-out patients on MNIST
+test digits. Separating the two axes is an open item.</p>
+<h2 id="6-the-canonical-problem">6. The canonical problem</h2>
+<p><strong>Population adaptive tracking of random dynamical systems.</strong> Sample
+<span class="arithmatex">\(\theta \sim P_\Theta\)</span> and <span class="arithmatex">\(r \sim P_R\)</span>, and let <span class="arithmatex">\(z^\star = E(r)\)</span>. The
+system is</p>
+<div class="arithmatex">\[
+x_{t+1} = A_{\theta,\phi_t} x_t + B_{\theta,\phi_t} u_t + w_t,\qquad
+o_t = C_\theta x_t + v_t,\qquad
+\phi_{t+1} = \rho\,\phi_t + \eta_t .
+\]</div>
+<p>Find</p>
+<div class="arithmatex">\[
+\pi^\star = \arg\min_\pi\ \mathbb E_{\theta, r, \phi, w, v}
+\left[\sum_{t=0}^{T} \lVert D_\theta x_t - z^\star \rVert_Q^2 + \lambda \lVert u_t \rVert_R^2\right]
+\quad\text{s.t.}\quad u_t \in \mathcal U_{\mathrm{safe}},
+\]</div>
+<p>where <span class="arithmatex">\(\pi\)</span> may depend only on <span class="arithmatex">\((z^\star, o_{\le t}, u_{&lt;t})\)</span>. This is a
+Bayes-adaptive, partially observed, constrained stochastic control problem
+over a population of slowly time-varying systems.</p>
+<h2 id="7-the-ladder-add-one-difficulty-at-a-time">7. The ladder: add one difficulty at a time</h2>
+<p>Each rung adds exactly one source of difficulty. That lets a failure be
+traced to its cause instead of to "biology".</p>
+<table>
+<thead>
+<tr>
+<th>Rung</th>
+<th>Adds</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>L0</td>
+<td>one known linear patient: LQG is optimal, a sanity check</td>
+<td><code>canonical.py</code></td>
+</tr>
+<tr>
+<td>L1</td>
+<td>random patients, <span class="arithmatex">\(\theta \sim P_\Theta\)</span></td>
+<td><code>canonical.py</code></td>
+</tr>
+<tr>
+<td>L2</td>
+<td>partial observation, <span class="arithmatex">\(o = Dx + v\)</span></td>
+<td><code>canonical.py</code></td>
+</tr>
+<tr>
+<td>L3</td>
+<td>slow drift, <span class="arithmatex">\(\phi_t\)</span></td>
+<td><code>canonical.py</code></td>
+</tr>
+<tr>
+<td>L4</td>
+<td>control-dependent adaptation <span class="arithmatex">\(h_t\)</span>, saturation <span class="arithmatex">\(\tanh\)</span>, charge limits</td>
+<td><a href="../neurostim/">NeuroStim</a></td>
+</tr>
+<tr>
+<td>L5</td>
+<td>nonlinear image readout <span class="arithmatex">\(D\)</span> = decoder, <span class="arithmatex">\(E\)</span> = encoder</td>
+<td><a href="../neurostim-percept/">NeuroStim-Percept</a></td>
+</tr>
+</tbody>
+</table>
+<p>Four controllers are compared, from least to most informed:</p>
+<ul>
+<li><strong>zero:</strong> no stimulation.</li>
+<li><strong>population LQG:</strong> one controller designed for the mean patient
+  <span class="arithmatex">\((\bar A, \bar B)\)</span>.</li>
+<li><strong>adaptive:</strong> recursive least squares with forgetting on an ARX model,
+  then certainty-equivalent LQ tracking. It knows nothing about the patient.</li>
+<li><strong>oracle LQG *:</strong> knows <span class="arithmatex">\((A_\theta, B_\theta + \phi_t)\)</span>. It is optimal for
+  L0–L2 and a lower bound on error for all rungs.</li>
+</ul>
+<p>The table reports percept error <span class="arithmatex">\(\lVert Dx - z^\star \rVert^2\)</span> over the
+second half of each episode, on 30 held-out patients (each with a target from
+the common set). <em>Failure</em> means ending worse than not stimulating at all
+(same patient, target and noise).</p>
+<table>
+<thead>
+<tr>
+<th>level</th>
+<th>controller</th>
+<th style="text-align: right;">median error</th>
+<th style="text-align: right;">mean error</th>
+<th style="text-align: right;">failure rate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>L0 known patient</td>
+<td>zero</td>
+<td style="text-align: right;">0.5874</td>
+<td style="text-align: right;">0.8140</td>
+<td style="text-align: right;">0.00</td>
+</tr>
+<tr>
+<td>L0 known patient</td>
+<td>population LQG</td>
+<td style="text-align: right;">0.0149</td>
+<td style="text-align: right;">0.0180</td>
+<td style="text-align: right;">0.00</td>
+</tr>
+<tr>
+<td>L0 known patient</td>
+<td>adaptive (RLS + CE)</td>
+<td style="text-align: right;">0.0251</td>
+<td style="text-align: right;">0.6663</td>
+<td style="text-align: right;">0.03</td>
+</tr>
+<tr>
+<td>L0 known patient</td>
+<td>oracle LQG *</td>
+<td style="text-align: right;">0.0149</td>
+<td style="text-align: right;">0.0180</td>
+<td style="text-align: right;">0.00</td>
+</tr>
+<tr>
+<td>L1 random patients</td>
+<td>zero</td>
+<td style="text-align: right;">0.5738</td>
+<td style="text-align: right;">0.8164</td>
+<td style="text-align: right;">0.00</td>
+</tr>
+<tr>
+<td>L1 random patients</td>
+<td>population LQG</td>
+<td style="text-align: right;">0.3661</td>
+<td style="text-align: right;">9.8554</td>
+<td style="text-align: right;">0.40</td>
+</tr>
+<tr>
+<td>L1 random patients</td>
+<td>adaptive (RLS + CE)</td>
+<td style="text-align: right;">0.0252</td>
+<td style="text-align: right;">0.0476</td>
+<td style="text-align: right;">0.00</td>
+</tr>
+<tr>
+<td>L1 random patients</td>
+<td>oracle LQG *</td>
+<td style="text-align: right;">0.0133</td>
+<td style="text-align: right;">0.0324</td>
+<td style="text-align: right;">0.00</td>
+</tr>
+<tr>
+<td>L2 + partial observation</td>
+<td>zero</td>
+<td style="text-align: right;">0.5630</td>
+<td style="text-align: right;">0.7915</td>
+<td style="text-align: right;">0.00</td>
+</tr>
+<tr>
+<td>L2 + partial observation</td>
+<td>population LQG</td>
+<td style="text-align: right;">0.5692</td>
+<td style="text-align: right;">10.4198</td>
+<td style="text-align: right;">0.53</td>
+</tr>
+<tr>
+<td>L2 + partial observation</td>
+<td>adaptive (RLS + CE)</td>
+<td style="text-align: right;">0.0405</td>
+<td style="text-align: right;">0.3486</td>
+<td style="text-align: right;">0.07</td>
+</tr>
+<tr>
+<td>L2 + partial observation</td>
+<td>oracle LQG *</td>
+<td style="text-align: right;">0.0149</td>
+<td style="text-align: right;">0.0332</td>
+<td style="text-align: right;">0.00</td>
+</tr>
+<tr>
+<td>L3 + drift</td>
+<td>zero</td>
+<td style="text-align: right;">0.5972</td>
+<td style="text-align: right;">0.8130</td>
+<td style="text-align: right;">0.00</td>
+</tr>
+<tr>
+<td>L3 + drift</td>
+<td>population LQG</td>
+<td style="text-align: right;">5.4302</td>
+<td style="text-align: right;">17.1547</td>
+<td style="text-align: right;">0.70</td>
+</tr>
+<tr>
+<td>L3 + drift</td>
+<td>adaptive (RLS + CE)</td>
+<td style="text-align: right;">0.1357</td>
+<td style="text-align: right;">4.1422</td>
+<td style="text-align: right;">0.30</td>
+</tr>
+<tr>
+<td>L3 + drift</td>
+<td>oracle LQG *</td>
+<td style="text-align: right;">0.0158</td>
+<td style="text-align: right;">0.0330</td>
+<td style="text-align: right;">0.00</td>
+</tr>
+</tbody>
+</table>
+<p>Reading the ladder:</p>
+<ul>
+<li><strong>L0:</strong> the population controller <em>is</em> the oracle, since all patients are
+  the mean patient. The adaptive controller pays for not knowing that: its
+  median error is 1.7× the oracle's.</li>
+<li><strong>L1:</strong> one controller for everybody fails on 40 % of patients, ending
+  worse than no stimulation (mean 9.9 against 0.8). Identifying each patient
+  brings the median error to 0.025, within 2× of the oracle.</li>
+<li><strong>L2:</strong> partial observation hardly hurts the oracle (a Kalman filter
+  recovers <span class="arithmatex">\(x\)</span>), but it hurts the learner. The median error rises 1.6× and
+  failures appear (7 %).</li>
+<li><strong>L3:</strong> drift is the hardest rung for the learner, with a median error of
+  0.136, 9× the oracle, and 30 % failures. The medians are small but the
+  means are large: certainty equivalence has a heavy tail of occasional
+  catastrophic episodes. That tail is exactly what dual or robust control
+  exists to remove.</li>
+</ul>
+<h2 id="8-three-experiments">8. Three experiments</h2>
+<p><strong>How different must patients be before personalisation pays?</strong> Here,
+never: the adaptive controller wins at every spread. Even at <span class="arithmatex">\(\sigma_B = 0\)</span>
+the population controller is 4× worse than the oracle (0.062 against
+0.015), because patients still differ slightly in <span class="arithmatex">\(A\)</span> (<span class="arithmatex">\(\sigma_A = 0.05\)</span>).
+As <span class="arithmatex">\(\sigma_B\)</span> grows, the population controller's error climbs past no
+stimulation near <span class="arithmatex">\(\sigma_B \approx 0.55\)</span>. At <span class="arithmatex">\(\sigma_B = 1\)</span> it reaches 15.6,
+27× worse than not stimulating: a feedback gain designed for the wrong <span class="arithmatex">\(B\)</span>
+pushes the state the wrong way. The adaptive controller's cost is flat in
+<span class="arithmatex">\(\sigma_B\)</span>, a fixed price for identification. A crossover would appear if
+the identification cost were higher (shorter episodes, noisier data, more
+electrodes).</p>
+<p><img alt="patient spread" src="../assets/neurostim/c1_patient_spread.png" /></p>
+<p><strong>The cost of learning.</strong> On a new patient the adaptive controller probes for
+30 steps, and random stimulation drives the error far <em>above</em> no
+stimulation (up to about 7). It then drops to within about 2× of the oracle
+immediately after the first certainty-equivalent design. The probing
+transient is the price of not knowing <span class="arithmatex">\(\theta\)</span>. A better prior or smarter
+exploration (dual control, meta-learning, the calibration sweeps of the other
+tutorials) would make it shorter and gentler. The population controller never
+learns: it settles about 20× above the oracle.</p>
+<p><img alt="learning curve" src="../assets/neurostim/c2_learning_curve.png" /></p>
+<p><strong>Drift: memory against lag.</strong> RLS with forgetting factor <span class="arithmatex">\(\lambda_f\)</span>
+averages over roughly <span class="arithmatex">\(W = 1/(1-\lambda_f)\)</span> steps. Over that window a
+random-walk parameter moves about <span class="arithmatex">\(\eta\sqrt W\)</span>, so the bias grows with
+<span class="arithmatex">\(\eta^2 W\)</span>. The estimation variance falls as <span class="arithmatex">\(\sigma^2/W\)</span>. The optimum is
+<span class="arithmatex">\(W^\star \propto \sigma/\eta\)</span>: faster drift needs shorter memory. The data
+agree within the grid's resolution. The best memory is 200 steps at
+<span class="arithmatex">\(\eta = 0.003\)</span> and 100 steps at <span class="arithmatex">\(\eta = 0.01\)</span> and <span class="arithmatex">\(0.03\)</span>. For the fastest
+drift, no forgetting is catastrophic (error 5.8 against 0.10). Very short
+memory (10 steps) is bad at every drift rate, because the variance term
+dominates.</p>
+<p><img alt="drift memory" src="../assets/neurostim/c3_drift_memory.png" /></p>
+<p><code>bash
+uv run python examples/neurostim_canonical_tutorial.py           # ~10 min
+uv run python examples/neurostim_canonical_tutorial.py --quick   # ~1 min</code></p>
+<h2 id="9-mapping-to-the-code">9. Mapping to the code</h2>
+<table>
+<thead>
+<tr>
+<th>Symbol</th>
+<th><code>canonical.py</code></th>
+<th><a href="../neurostim/">NeuroStim</a> (<code>env.py</code>)</th>
+<th><a href="../neurostim-percept/">NeuroStim-Percept</a> (<code>percept.py</code>)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><span class="arithmatex">\(\theta\)</span></td>
+<td><code>Population.sample</code> → <code>Patient(A, B)</code></td>
+<td><code>randomize_B</code>, <code>randomize_A</code></td>
+<td><code>Brain.sample_patients</code></td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(\phi_t\)</span></td>
+<td><code>drift</code>, <code>drift_decay</code></td>
+<td><code>drift_std</code>, <code>drift_revert</code></td>
+<td>–</td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(h_t\)</span></td>
+<td>–</td>
+<td><code>adapt_*</code> fields</td>
+<td><code>adapt_*</code> fields</td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(x_t\)</span></td>
+<td>6-D linear</td>
+<td>3-D, cubic term</td>
+<td>16-D, autoencoder code</td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(C\)</span></td>
+<td><code>observe="full"</code> / <code>"percept"</code></td>
+<td><code>observation="full"</code> / <code>"partial"</code></td>
+<td>percept image + noise</td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(D\)</span></td>
+<td>first 3 latents</td>
+<td>identity</td>
+<td>MNIST decoder</td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(E(r)\)</span></td>
+<td>common target set <code>targets</code></td>
+<td>fixed <span class="arithmatex">\(x^\star\)</span></td>
+<td>MNIST encoder</td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(\mathcal U_{\mathrm{safe}}\)</span></td>
+<td>box <span class="arithmatex">\(\lvert u \rvert \le u_{\max}\)</span></td>
+<td>box, charge, adaptation (costs)</td>
+<td>box, charge projection</td>
+</tr>
+<tr>
+<td>belief encoder</td>
+<td>RLS estimate</td>
+<td>DAgger calibration record</td>
+<td>calibration sweep + hypernetwork</td>
+</tr>
+</tbody>
+</table>
+<h2 id="10-what-this-abstraction-leaves-out">10. What this abstraction leaves out</h2>
+<ul>
+<li><strong>Patients are not i.i.d.</strong> Real cohorts come with covariates (implant
+  type, electrode positions, imaging). <span class="arithmatex">\(P_\Theta\)</span> should be conditional,
+  <span class="arithmatex">\(P(\theta \mid c)\)</span>, and that information is free identification.</li>
+<li><strong>The percept is rarely observed.</strong> The canonical problem lets <span class="arithmatex">\(o_t\)</span>
+  include <span class="arithmatex">\(z_t\)</span>, so the tracking error can be measured. In a prosthesis the
+  percept is reported by the patient, sparsely, noisily and late. Without a
+  model of <span class="arithmatex">\(D\)</span> the error is not even observable. This is probably the
+  largest gap between the benchmark and the clinic.</li>
+<li><strong>Linear-Gaussian is a lens, not the model.</strong> Saturation, thresholds,
+  adaptation and constraints (L4–L5) break LQG optimality. There, model
+  predictive control or learned policies replace Riccati equations.</li>
+<li><strong>Safety is enforced by clipping in the linear rungs.</strong> In a constrained
+  MDP (NeuroStim) it enters as a cost with a budget. A real system needs
+  hard guarantees during exploration: safe probing is its own problem.</li>
+</ul>
+<h2 id="references">References</h2>
+<ul>
+<li>Kalman, R. E. (1960). A new approach to linear filtering and prediction
+  problems. <em>J. Basic Engineering</em>, 82(1), 35–45.</li>
+<li>Feldbaum, A. A. (1960). Dual control theory I. <em>Automation and Remote
+  Control</em>, 21, 874–880.</li>
+<li>Shamma, J. S., &amp; Athans, M. (1991). Guaranteed properties of gain
+  scheduled control for linear parameter-varying plants. <em>Automatica</em>,
+  27(3), 559–564.</li>
+<li>Ljung, L. (1999). <em>System Identification: Theory for the User</em> (2nd ed.).
+  Prentice Hall.</li>
+<li>Duff, M. O. (2002). <em>Optimal learning: computational procedures for
+  Bayes-adaptive Markov decision processes</em>. PhD thesis, UMass Amherst.</li>
+<li>Åström, K. J., &amp; Wittenmark, B. (2008). <em>Adaptive Control</em> (2nd ed.).
+  Dover.</li>
+<li>Zintgraf, L., et al. (2020). VariBAD: a very good method for Bayes-adaptive
+  deep RL via meta-learning. <em>ICLR</em>.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"..","features":[],"search":"../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.49251538.min.js"></script>
+      
+    
+  </body>
+</html>

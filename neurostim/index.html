@@ -1,0 +1,1557 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="GPU-native prosthetic vision world models, classified by modality.">
+      
+      
+      
+        <link rel="canonical" href="https://ascientist.github.io/sentionaut/neurostim/">
+      
+      
+        <link rel="prev" href="../neurostim-formulation/">
+      
+      
+        <link rel="next" href="../neurostim-percept/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/favicon.png">
+      <meta name="generator" content="zensical-0.0.57">
+    
+    
+      
+        <title>NeuroStim: closed-loop control benchmark - Sentionaut</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../assets/stylesheets/modern/main.5da3a30f.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../assets/stylesheets/modern/palette.812a03bb.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="red">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="Navigation"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#neurostim-closed-loop-control-benchmark" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="./.." title="Sentionaut" class="md-header__button md-logo" aria-label="Sentionaut" data-md-component="logo">
+      
+  <img src="../assets/sentionaut-mark.png" alt="Sentionaut">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="Navigation">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Sentionaut
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              NeuroStim: closed-loop control benchmark
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="red"  aria-hidden="true"  type="radio" name="__palette" id="__palette_0">
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="Search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/ascientist/sentionaut" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ascientist/sentionaut
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="./.." title="Sentionaut" class="md-nav__button md-logo" aria-label="Sentionaut" data-md-component="logo">
+      
+  <img src="../assets/sentionaut-mark.png" alt="Sentionaut">
+
+    </a>
+    Sentionaut
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ascientist/sentionaut" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ascientist/sentionaut
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Getting started
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  User guide
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../nomenclature/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Nomenclature
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Models
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  Models
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Models
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../models/demos/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Stimulation demos: how to read them
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../models/axonmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Axon map
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../models/axonmap-world/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  From the axon map to a world model
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../models/scoreboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Scoreboard
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../models/dynaphos/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Dynaphos
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../models/world-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  World model
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../models/axonmap-world/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  From the axon map to a world model
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  NeuroStim (control)
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  NeuroStim (control)
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../neurostim-formulation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Canonical formulation
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  NeuroStim: closed-loop control benchmark
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  NeuroStim: closed-loop control benchmark
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#model" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Model
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#difficulty-axes-and-presets" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Difficulty axes and presets
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#baselines" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Baselines
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tutorial" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Tutorial
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tutorial">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#results" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Results
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#image-targets" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Image targets
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#design-notes-and-caveats" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Design notes and caveats
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../neurostim-percept/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  NeuroStim-Percept: image targets through a world model
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../references/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  References
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#model" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Model
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#difficulty-axes-and-presets" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Difficulty axes and presets
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#baselines" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Baselines
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tutorial" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Tutorial
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tutorial">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#results" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Results
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#image-targets" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Image targets
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#design-notes-and-caveats" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Design notes and caveats
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+  
+  
+
+
+<h1 id="neurostim-closed-loop-control-benchmark">NeuroStim: closed-loop control benchmark</h1>
+<p><a href="../">Home</a> · <a href="../getting-started/">Getting started</a> · <a href="../user-guide/">User guide</a> · <a href="../nomenclature/">Nomenclature</a> · <a href="../models/">Models</a> · <a href="../neurostim/">NeuroStim</a> · <a href="../references/">References</a></p>
+<p>A tiny <strong>constrained POMDP</strong> for closed-loop neurostimulation. It is not a
+biophysical model. It is the smallest system that keeps what makes
+stimulation control an RL problem and not a bandit: stimulation changes a
+<em>persistent</em> neural state, the electrode→state map is unknown and overlapping,
+repeated stimulation adapts, and safety is a constraint, not a penalty.</p>
+<p>Source: <code>src/sentionaut/neurostim/</code> · Tutorial: <code>examples/neurostim_tutorial.py</code> ·
+Maths: <a href="../neurostim-formulation/">canonical formulation</a> (this environment is rung L4)</p>
+<h2 id="model">Model</h2>
+<p>Latent state <code>s_t = (x_t, h_t, B_t)</code>: neural state <code>x ∈ R³</code>, per-electrode
+adaptation <code>h ∈ R⁴</code>, recruitment matrix <code>B ∈ R^{3×4}</code> (the "patient").</p>
+<p><code>text
+x_{t+1} = A x_t − α x_t³ + B_t · diag(1/(1+λ h_t)) · tanh(a_{t−δ}) + w_t
+h_{t+1} = ρ h_t + κ |a_t|                                   (ρ=0.95, κ=0.05, λ=2)
+B_{t+1} = B_t + θ (B_0 − B_t) + η_t                         (drift, optional)
+o_t     = C x_t + ε_t
+r_t     = −‖x_{t+1} − x*‖² − w_E ‖a_t‖² − w_Δ ‖a_t − a_{t−1}‖²,   x* = (1, 0, −1)</code></p>
+<p>Constraints, returned as <code>info["cost"]</code> (1 if any is violated this step) and
+<code>info["cost_terms"]</code> (the size of each violation):</p>
+<ul>
+<li>charge <code>Σ_i |a_t^i| ≤ q_max = 2</code></li>
+<li>adaptation <code>max_i h_t^i ≤ h_max = 0.8</code></li>
+<li><code>|a^i| ≤ 1</code> is enforced by clipping</li>
+</ul>
+<p>The problem is <code>max_π E[Σ γ^t r_t]</code> s.t. <code>E[Σ c_t] ≤ d</code>. The default <code>B</code> is
+the overlapping matrix from the design note, scaled by <code>stim_gain = 0.5</code>.
+With that scale the target costs moderate charge, and holding it pushes the
+most-used electrodes against <code>h_max</code>.</p>
+<h2 id="difficulty-axes-and-presets">Difficulty axes and presets</h2>
+<p>Every axis is a field of <code>NeuroStimConfig</code>, and any preset can be overridden.</p>
+<table>
+<thead>
+<tr>
+<th>Axis</th>
+<th>Easy</th>
+<th>Hard</th>
+<th>Field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Observability</td>
+<td><code>o = x</code></td>
+<td>2 mixed biomarkers for 3 latents</td>
+<td><code>observation</code>, <code>obs_noise</code></td>
+</tr>
+<tr>
+<td>Stimulation map</td>
+<td>diagonal <code>B</code></td>
+<td>overlapping <code>B</code>, new patient per episode</td>
+<td><code>mapping</code>, <code>randomize_B</code></td>
+</tr>
+<tr>
+<td>Temporal</td>
+<td>immediate</td>
+<td>delay <code>δ</code> + adaptation</td>
+<td><code>delay</code>, <code>adaptation</code></td>
+</tr>
+<tr>
+<td>Nonstationarity</td>
+<td>fixed</td>
+<td><code>B_t</code> drifts, random <code>A</code></td>
+<td><code>drift_std</code>, <code>randomize_A</code></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Preset</th>
+<th>Setting</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>NeuroStim-Easy-v0</code></td>
+<td>diagonal <code>B</code>, no adaptation, noiseless full observation</td>
+</tr>
+<tr>
+<td><code>NeuroStim-v0</code></td>
+<td><strong>canonical</strong>: overlapping, random per-patient <code>B</code>, adaptation, constraints, noisy full observation</td>
+</tr>
+<tr>
+<td><code>NeuroStim-Hard-v0</code></td>
+<td>+ partial observation, delay 2, random <code>A</code>, drifting <code>B</code></td>
+</tr>
+</tbody>
+</table>
+<p>```python
+from sentionaut.neurostim import make</p>
+<p>env = make("NeuroStim-v0")               # or make("NeuroStim-v0", delay=3, drift_std=0.01)
+obs, info = env.reset(seed=0)            # each seed is a new patient
+obs, r, terminated, truncated, info = env.step(env.action_space.sample())
+info["cost"], info["cost_terms"]         # CMDP constraint signals
+info["x"], info["h"], info["B"]          # privileged latents (for oracles and plots only)
+```</p>
+<p>The API follows Gymnasium's (<code>reset → (obs, info)</code>, 5-tuple <code>step</code>) but does
+not depend on it. A <code>gymnasium.Env</code> wrapper is a few lines if you need one.</p>
+<h2 id="baselines">Baselines</h2>
+<p><code>sentionaut.neurostim.baselines</code> (policies marked <code>*</code> read the latent state):</p>
+<table>
+<thead>
+<tr>
+<th>Policy</th>
+<th>Idea</th>
+<th>Uses</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>zero</code>, <code>random</code></td>
+<td>floor</td>
+<td>–</td>
+</tr>
+<tr>
+<td><code>bandit (UCB)</code></td>
+<td>UCB1 over single-electrode pulses; ignores state</td>
+<td>reward only</td>
+</tr>
+<tr>
+<td><code>nominal PI</code></td>
+<td>PI feedback through <code>pinv(B_population)</code>: a "universal" controller</td>
+<td>obs + population <code>B</code></td>
+</tr>
+<tr>
+<td><code>online sysID</code></td>
+<td>probe, then RLS-with-forgetting estimate of <code>(A, B)</code>, then certainty-equivalent control</td>
+<td>obs + <code>target_obs</code></td>
+</tr>
+<tr>
+<td><code>oracle greedy *</code></td>
+<td>one-step optimal drive, given true <code>x, h, A, B_t</code> and actions in flight; enforces both constraints</td>
+<td>latent state</td>
+</tr>
+<tr>
+<td><code>PPO</code> / <code>PPO-Lagrangian</code></td>
+<td>MLP on a <code>(o, a_prev)</code> history window; the Lagrangian version learns a multiplier on the violation budget</td>
+<td>obs history</td>
+</tr>
+<tr>
+<td><code>DAgger</code> (supervised, no RL)</td>
+<td>same history MLP, trained by MSE regression onto the oracle's action at every state it visits; the dataset is aggregated over iterations</td>
+<td>obs history (the oracle is used only as a training label)</td>
+</tr>
+<tr>
+<td><code>DAgger + calibration</code></td>
+<td>as above, plus a fixed 8-step probe sweep (one ±0.5 pulse per electrode) at episode start; the responses stay in the input</td>
+<td>obs history + probe record</td>
+</tr>
+</tbody>
+</table>
+<p><code>oracle greedy</code> is <strong>not</strong> an upper bound. It is myopic about adaptation: it
+drives the best-aligned electrodes into <code>h_max</code> and then loses the target
+(see the figure below). Unconstrained PPO beats its return on a fixed patient.</p>
+<h2 id="tutorial">Tutorial</h2>
+<p><code>bash
+uv run python examples/neurostim_tutorial.py            # ~15 min on 1 CPU core
+uv run python examples/neurostim_tutorial.py --quick    # ~30 s smoke run</code></p>
+<p><strong>1. Probe one patient open loop.</strong> Each electrode moves all three latents,
+so none of them controls one variable alone. Holding stimulation on builds
+<code>h</code>, and the response sags while stimulation is still on.</p>
+<p><img alt="probe" src="../assets/neurostim/01_probe.png" /></p>
+<p><strong>2. One held-out patient, five controllers.</strong> The bandit locks onto one
+electrode and pins it at <code>h_max</code>. Nominal PI assumes the population <code>B</code>, so it
+drives this patient the wrong way. Online sysID finds the patient after about
+20 probe steps but cannot see <code>h</code>, so it breaks the adaptation constraint. The
+oracle holds the constraints, but it is myopic: E1 and E3 saturate at <code>h_max</code>
+and <code>x₃</code> drifts off target.</p>
+<p><img alt="controllers" src="../assets/neurostim/02_controllers.png" /></p>
+<p><strong>3. RL.</strong> Unconstrained PPO on a fixed patient reaches the best return by
+breaking a constraint ~95 % of the time. PPO-Lagrangian stays inside the
+budget at about 2× the tracking error. Across random patients, PPO with a
+16-step history learns nothing. The same PPO given the true <code>B</code> learns a
+usable controller. So the bottleneck is <strong>identifying the patient</strong>, not
+controlling one.</p>
+<p><img alt="ppo" src="../assets/neurostim/03_ppo_learning.png" /></p>
+<p><strong>4. Supervised imitation (no RL).</strong> <code>sentionaut.neurostim.imitation</code> trains
+the same history-MLP as PPO, but by regression. The privileged oracle labels
+every state the student visits, which turns the control problem into
+supervised learning with a dense per-step target. Iteration 0 is plain
+behaviour cloning: on random patients it is worse than no stimulation,
+because the student drifts into states the teacher never visited (covariate
+shift). DAgger's aggregated relabelling fixes that.</p>
+<ul>
+<li><strong>Fixed patient:</strong> the student matches the oracle (−22.7 vs −22.8, 0 %
+  violations). It beats PPO-Lagrangian (−44) with about 60 k labelled steps and
+  no reward shaping.</li>
+<li><strong>Random patients:</strong> −298. That is better than PPO (−519), but the teacher
+  never excites the system, so the history rarely shows how this patient's
+  <code>B</code> responds.</li>
+<li><strong>Random patients + calibration sweep:</strong> −169. It is about as good as PPO
+  given the true <code>B</code> (−157), with ~1 % violations. It still trails RLS
+  system ID (−88), whose linear-model prior is exactly right for this
+  environment.</li>
+</ul>
+<p>Imitation cannot beat its teacher. Here the teacher is myopic, so the
+student's ceiling is the oracle's −38.</p>
+<p><img alt="dagger" src="../assets/neurostim/04_dagger.png" /></p>
+<h3 id="results">Results</h3>
+<p>30 held-out patients (seeds 1000–1029). Return is mean ± s.e. Steady-state
+error is <code>‖x − x*‖²</code> averaged over the last 50 of 200 steps. Violation rate is
+the fraction of steps that break a constraint. Charge is <code>Σ|a|</code> per step.</p>
+<table>
+<thead>
+<tr>
+<th>setting</th>
+<th>policy</th>
+<th style="text-align: right;">return</th>
+<th style="text-align: right;">steady-state error</th>
+<th style="text-align: right;">violation rate</th>
+<th style="text-align: right;">charge</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>NeuroStim-Easy-v0</td>
+<td>zero</td>
+<td style="text-align: right;">-406.0 ± 1.7</td>
+<td style="text-align: right;">2.026</td>
+<td style="text-align: right;">0.000</td>
+<td style="text-align: right;">0.00</td>
+</tr>
+<tr>
+<td>NeuroStim-Easy-v0</td>
+<td>random</td>
+<td style="text-align: right;">-448.7 ± 5.7</td>
+<td style="text-align: right;">2.193</td>
+<td style="text-align: right;">0.000</td>
+<td style="text-align: right;">0.99</td>
+</tr>
+<tr>
+<td>NeuroStim-Easy-v0</td>
+<td>bandit (UCB)</td>
+<td style="text-align: right;">-257.4 ± 12.0</td>
+<td style="text-align: right;">1.248</td>
+<td style="text-align: right;">0.000</td>
+<td style="text-align: right;">0.79</td>
+</tr>
+<tr>
+<td>NeuroStim-Easy-v0</td>
+<td>nominal PI</td>
+<td style="text-align: right;">-3.2 ± 0.3</td>
+<td style="text-align: right;">0.001</td>
+<td style="text-align: right;">0.000</td>
+<td style="text-align: right;">1.04</td>
+</tr>
+<tr>
+<td>NeuroStim-Easy-v0</td>
+<td>online sysID</td>
+<td style="text-align: right;">-47.7 ± 1.5</td>
+<td style="text-align: right;">0.008</td>
+<td style="text-align: right;">0.000</td>
+<td style="text-align: right;">0.94</td>
+</tr>
+<tr>
+<td>NeuroStim-Easy-v0</td>
+<td>oracle greedy *</td>
+<td style="text-align: right;">-3.1 ± 0.2</td>
+<td style="text-align: right;">0.002</td>
+<td style="text-align: right;">0.000</td>
+<td style="text-align: right;">1.01</td>
+</tr>
+<tr>
+<td>NeuroStim-v0</td>
+<td>zero</td>
+<td style="text-align: right;">-406.2 ± 1.5</td>
+<td style="text-align: right;">2.032</td>
+<td style="text-align: right;">0.000</td>
+<td style="text-align: right;">0.00</td>
+</tr>
+<tr>
+<td>NeuroStim-v0</td>
+<td>random</td>
+<td style="text-align: right;">-438.3 ± 4.9</td>
+<td style="text-align: right;">2.125</td>
+<td style="text-align: right;">0.000</td>
+<td style="text-align: right;">0.99</td>
+</tr>
+<tr>
+<td>NeuroStim-v0</td>
+<td>bandit (UCB)</td>
+<td style="text-align: right;">-197.8 ± 12.0</td>
+<td style="text-align: right;">0.897</td>
+<td style="text-align: right;">0.000</td>
+<td style="text-align: right;">0.79</td>
+</tr>
+<tr>
+<td>NeuroStim-v0</td>
+<td>nominal PI</td>
+<td style="text-align: right;">-911.8 ± 114.0</td>
+<td style="text-align: right;">4.382</td>
+<td style="text-align: right;">0.029</td>
+<td style="text-align: right;">2.00</td>
+</tr>
+<tr>
+<td>NeuroStim-v0</td>
+<td>online sysID</td>
+<td style="text-align: right;">-88.3 ± 8.4</td>
+<td style="text-align: right;">0.235</td>
+<td style="text-align: right;">0.203</td>
+<td style="text-align: right;">1.58</td>
+</tr>
+<tr>
+<td>NeuroStim-v0</td>
+<td>oracle greedy *</td>
+<td style="text-align: right;">-38.1 ± 6.8</td>
+<td style="text-align: right;">0.209</td>
+<td style="text-align: right;">0.000</td>
+<td style="text-align: right;">1.73</td>
+</tr>
+<tr>
+<td>NeuroStim-Hard-v0</td>
+<td>zero</td>
+<td style="text-align: right;">-404.1 ± 2.1</td>
+<td style="text-align: right;">2.009</td>
+<td style="text-align: right;">0.000</td>
+<td style="text-align: right;">0.00</td>
+</tr>
+<tr>
+<td>NeuroStim-Hard-v0</td>
+<td>random</td>
+<td style="text-align: right;">-439.1 ± 7.4</td>
+<td style="text-align: right;">2.162</td>
+<td style="text-align: right;">0.000</td>
+<td style="text-align: right;">0.99</td>
+</tr>
+<tr>
+<td>NeuroStim-Hard-v0</td>
+<td>bandit (UCB)</td>
+<td style="text-align: right;">-588.2 ± 39.7</td>
+<td style="text-align: right;">2.583</td>
+<td style="text-align: right;">0.000</td>
+<td style="text-align: right;">0.66</td>
+</tr>
+<tr>
+<td>NeuroStim-Hard-v0</td>
+<td>nominal PI</td>
+<td style="text-align: right;">-1176.2 ± 135.5</td>
+<td style="text-align: right;">5.828</td>
+<td style="text-align: right;">0.047</td>
+<td style="text-align: right;">2.00</td>
+</tr>
+<tr>
+<td>NeuroStim-Hard-v0</td>
+<td>online sysID</td>
+<td style="text-align: right;">-508.7 ± 56.5</td>
+<td style="text-align: right;">1.649</td>
+<td style="text-align: right;">0.077</td>
+<td style="text-align: right;">1.51</td>
+</tr>
+<tr>
+<td>NeuroStim-Hard-v0</td>
+<td>oracle greedy *</td>
+<td style="text-align: right;">-40.3 ± 7.3</td>
+<td style="text-align: right;">0.188</td>
+<td style="text-align: right;">0.000</td>
+<td style="text-align: right;">1.73</td>
+</tr>
+<tr>
+<td>v0, fixed B</td>
+<td>nominal PI</td>
+<td style="text-align: right;">-27.6 ± 0.5</td>
+<td style="text-align: right;">0.124</td>
+<td style="text-align: right;">0.056</td>
+<td style="text-align: right;">1.97</td>
+</tr>
+<tr>
+<td>v0, fixed B</td>
+<td>online sysID</td>
+<td style="text-align: right;">-75.5 ± 4.9</td>
+<td style="text-align: right;">0.167</td>
+<td style="text-align: right;">0.553</td>
+<td style="text-align: right;">1.79</td>
+</tr>
+<tr>
+<td>v0, fixed B</td>
+<td>oracle greedy *</td>
+<td style="text-align: right;">-22.8 ± 0.4</td>
+<td style="text-align: right;">0.116</td>
+<td style="text-align: right;">0.000</td>
+<td style="text-align: right;">1.97</td>
+</tr>
+<tr>
+<td>v0, fixed B</td>
+<td>PPO (fixed patient)</td>
+<td style="text-align: right;">-19.4 ± 0.3</td>
+<td style="text-align: right;">0.090</td>
+<td style="text-align: right;">0.946</td>
+<td style="text-align: right;">2.56</td>
+</tr>
+<tr>
+<td>v0, fixed B</td>
+<td>PPO-Lagrangian (fixed patient)</td>
+<td style="text-align: right;">-44.3 ± 0.5</td>
+<td style="text-align: right;">0.227</td>
+<td style="text-align: right;">0.000</td>
+<td style="text-align: right;">1.07</td>
+</tr>
+<tr>
+<td>NeuroStim-v0</td>
+<td>PPO (random patients)</td>
+<td style="text-align: right;">-518.9 ± 65.3</td>
+<td style="text-align: right;">2.270</td>
+<td style="text-align: right;">0.850</td>
+<td style="text-align: right;">2.64</td>
+</tr>
+<tr>
+<td>NeuroStim-v0</td>
+<td>PPO + true B (random patients) *</td>
+<td style="text-align: right;">-157.0 ± 16.2</td>
+<td style="text-align: right;">0.747</td>
+<td style="text-align: right;">0.532</td>
+<td style="text-align: right;">1.80</td>
+</tr>
+<tr>
+<td>v0, fixed B</td>
+<td>DAgger (fixed patient)</td>
+<td style="text-align: right;">-22.7 ± 0.4</td>
+<td style="text-align: right;">0.116</td>
+<td style="text-align: right;">0.000</td>
+<td style="text-align: right;">1.94</td>
+</tr>
+<tr>
+<td>NeuroStim-v0</td>
+<td>DAgger (random patients)</td>
+<td style="text-align: right;">-298.4 ± 12.9</td>
+<td style="text-align: right;">1.497</td>
+<td style="text-align: right;">0.003</td>
+<td style="text-align: right;">0.88</td>
+</tr>
+<tr>
+<td>NeuroStim-v0</td>
+<td>DAgger + calibration (random patients)</td>
+<td style="text-align: right;">-168.9 ± 26.2</td>
+<td style="text-align: right;">0.832</td>
+<td style="text-align: right;">0.016</td>
+<td style="text-align: right;">1.24</td>
+</tr>
+</tbody>
+</table>
+<h2 id="image-targets">Image targets</h2>
+<p><a href="../neurostim-percept/">NeuroStim-Percept</a> lifts this model to a 16-D neural
+state read out as MNIST percepts. It learns stimulation by backpropagating a
+reconstruction loss through a learned world model, for fixed and random
+patients.</p>
+<h2 id="design-notes-and-caveats">Design notes and caveats</h2>
+<ul>
+<li><strong>Bandit boundary.</strong> Set <code>A = 0</code> and turn off adaptation. Then <code>x_{t+1}</code>
+  depends only on <code>a_t</code>, and the task becomes a contextual bandit or
+  Bayesian-optimisation problem. RL is justified by state persistence,
+  stimulation history (<code>h</code>, delay) and the need to identify the patient
+  within an episode.</li>
+<li><strong>Cycling electrodes does not pay off here.</strong> With concave recruitment
+  (<code>tanh</code>) and slow, linear adaptation, a constant spread of charge beats
+  cycling between electrodes. The average of <code>h</code> equals the duty cycle, and
+  by Jensen <code>tanh(d) ≥ d·tanh(1)</code>. Sequences such as E3→E1→E4 would pay off
+  only with convex (threshold-like) recruitment, or with recovery that is fast
+  compared to the cycle. If that behaviour matters, change <code>g</code>.</li>
+<li><strong>Reward uses the latent <code>x</code>.</strong> That is fine in simulation, but a real
+  system only sees a biomarker. The partial-observation preset makes this gap
+  show.</li>
+<li><strong>Universal vs personalised.</strong> A universal policy is trained offline across
+  <code>p(B)</code>. A personalised one identifies the patient online. The comparison
+  between them is the scientific core. The privileged-<code>B</code> PPO run bounds what
+  identification could buy. It is a diagnostic, not a method.</li>
+<li><strong>Identification is the bottleneck, whatever the learner.</strong> PPO, DAgger
+  and DAgger + calibration only differ in how the student gets information
+  about <code>B</code>. A designed probe helps a supervised learner more than any amount
+  of reward does. Natural supervised follow-ups: regress <code>B̂, ĥ</code> from the
+  probe record with an amortised identification network and hand them to the
+  model-based controller; or learn a dynamics model and plan through it with
+  MPC.</li>
+<li><strong>PPO here is a baseline, not a tuned agent.</strong> A recurrent or
+  meta-RL policy (RL², a context encoder), model-based RL, or dual control
+  are the natural next steps.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"..","features":[],"search":"../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.49251538.min.js"></script>
+      
+    
+  </body>
+</html>
