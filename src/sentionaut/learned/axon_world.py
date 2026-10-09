@@ -13,6 +13,7 @@ import json
 import signal
 import time
 from pathlib import Path
+from typing import Callable
 
 import click
 import h5py
@@ -101,6 +102,20 @@ class AxonMapWorld(nn.Module):
             )
         self.elec_xy.copy_(xy)
         return self
+
+    @classmethod
+    def from_pretrained(
+        cls,
+        repo_id: str = "ascientist/sentionaut-axon-world",
+        *,
+        filename: str = "axon_world.pt",
+        revision: str | None = None,
+        token: str | None = None,
+        device: torch.device | str | None = None,
+    ) -> "AxonMapWorld":
+        """Load a published checkpoint. ``repo_id`` may be a Hub id or a local directory."""
+        path = _resolve_weights(repo_id, filename, revision=revision, token=token)
+        return load_axon_world(path, device=device)
 
     def _to_patches(self, image: torch.Tensor):
         b, h, w = image.shape
@@ -326,7 +341,9 @@ def _rollout_loss(model: AxonMapWorld, batch: dict) -> torch.Tensor:
     return loss / k
 
 
-def _save_ckpt(path: Path, model, opt, epoch: int, history: list[float]) -> None:
+def _save_ckpt(
+    path: Path, model, opt, epoch: int, history: list[float], val_history: list[float]
+) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(
         {
@@ -334,6 +351,13 @@ def _save_ckpt(path: Path, model, opt, epoch: int, history: list[float]) -> None
             "optimizer": opt.state_dict(),
             "epoch": epoch,
             "loss_history": history,
+            "val_history": val_history,
+            # Width, depth and electrode count are recoverable from the weights;
+            # these three are not.
+            "grid_shape": model.grid_shape,
+            "heads": model.blocks[0].cross.num_heads,
+            "dt_ms": model.dt_ms,
+            "arch": getattr(model, "arch", None),
             "torch_rng": torch.get_rng_state(),
             "numpy_rng": np.random.get_state(),
         },
@@ -341,13 +365,86 @@ def _save_ckpt(path: Path, model, opt, epoch: int, history: list[float]) -> None
     )
 
 
-def _load_ckpt(path: Path, model, opt) -> tuple[int, list[float]]:
+def _load_ckpt(path: Path, model, opt) -> tuple[int, list[float], list[float]]:
     ckpt = torch.load(path, map_location="cpu", weights_only=False)
     model.load_state_dict(ckpt["model"])
     opt.load_state_dict(ckpt["optimizer"])
     torch.set_rng_state(ckpt["torch_rng"])
     np.random.set_state(ckpt["numpy_rng"])
-    return int(ckpt["epoch"]), list(ckpt["loss_history"])
+    return int(ckpt["epoch"]), list(ckpt["loss_history"]), list(ckpt.get("val_history", []))
+
+
+def load_axon_world(path: str | Path, device: torch.device | str | None = None) -> AxonMapWorld:
+    """Rebuild a student from a checkpoint. Missing ``grid_shape`` means the 97×97 Argus run."""
+    ckpt = torch.load(Path(path), map_location="cpu", weights_only=False)
+    sd = ckpt["model"]
+    dim = int(sd["elec_embed.weight"].shape[0])
+    n_elec = int(sd["elec_xy"].shape[0])
+    depth = sum(1 for k in sd if k.endswith("cross.in_proj_weight"))
+    patch = int(round(sd["patch_unembed.weight"].shape[0] ** 0.5))
+    grid = tuple(int(v) for v in ckpt.get("grid_shape") or (97, 97))
+    model = AxonMapWorld(
+        grid,
+        n_elec,
+        dim=dim,
+        depth=depth,
+        heads=int(ckpt.get("heads") or 4),
+        patch_size=patch,
+        dt_ms=float(ckpt.get("dt_ms") or 20.0),
+    )
+    model.load_state_dict(sd)
+    return model.to(device or torch.device("cpu")).eval()
+
+
+def _resolve_weights(
+    repo_id: str, filename: str, *, revision: str | None, token: str | None
+) -> Path:
+    local = Path(repo_id)
+    if local.is_dir():
+        return local / filename
+    from huggingface_hub import hf_hub_download
+
+    return Path(hf_hub_download(repo_id=repo_id, filename=filename, revision=revision, token=token))
+
+
+def push_checkpoint(
+    ckpt_path: str | Path,
+    repo_id: str,
+    *,
+    token: str | None = None,
+    private: bool = False,
+) -> str:
+    """Upload a checkpoint and a small config so ``from_pretrained`` can rebuild it."""
+    from huggingface_hub import HfApi
+
+    ckpt_path = Path(ckpt_path)
+    ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
+    sd = ckpt["model"]
+    config = {
+        "grid_shape": list(ckpt.get("grid_shape") or [97, 97]),
+        "n_electrodes": int(sd["elec_xy"].shape[0]),
+        "dim": int(sd["elec_embed.weight"].shape[0]),
+        "depth": sum(1 for k in sd if k.endswith("cross.in_proj_weight")),
+        "heads": int(ckpt.get("heads") or 4),
+        "patch_size": int(round(sd["patch_unembed.weight"].shape[0] ** 0.5)),
+        "dt_ms": float(ckpt.get("dt_ms") or 20.0),
+        "implant": "argusii",
+    }
+    api = HfApi(token=token)
+    api.create_repo(repo_id, exist_ok=True, private=private, repo_type="model")
+    api.upload_file(
+        path_or_fileobj=str(ckpt_path),
+        path_in_repo="axon_world.pt",
+        repo_id=repo_id,
+        repo_type="model",
+    )
+    api.upload_file(
+        path_or_fileobj=json.dumps(config, indent=2).encode(),
+        path_in_repo="config.json",
+        repo_id=repo_id,
+        repo_type="model",
+    )
+    return repo_id
 
 
 def distill_hdf5(
@@ -367,16 +464,32 @@ def distill_hdf5(
     patch_size: int = 4,
     num_workers: int = 0,
     bf16: bool = False,
+    init_ckpt: str | Path | None = None,
+    model_factory: Callable[[tuple, int, float], nn.Module] | None = None,
+    loss_fn: Callable[[nn.Module, dict], torch.Tensor] | None = None,
+    train_stride: int = 1,
+    val_stride: int = 1,
 ) -> dict:
-    """Train ``AxonMapWorld`` on axon-map transitions. Loss is K-step MSE after the exact fade."""
+    """Train on axon-map transitions. Default is ``AxonMapWorld``, K-step MSE after the exact fade.
+
+    ``model_factory(grid, n_electrodes, dt_ms)`` and ``loss_fn(model, batch)`` swap in
+    another student over the same windows, checkpoints, and timings. A stride keeps every
+    ``stride``-th K-step window; windows overlap by ``K - 1`` frames otherwise.
+    """
     dataset_path = Path(dataset_path)
     device = device or get_device()
     if device.type == "cuda":
         torch.cuda.reset_peak_memory_stats()
     train_w, val_w, scale, grid, n_elec, dt_ms = _episode_windows(dataset_path, rollout_k)
-    model = AxonMapWorld(
-        grid, n_elec, dim=dim, depth=depth, heads=heads, patch_size=patch_size, dt_ms=dt_ms
-    ).to(device)
+    train_w, val_w = train_w[:: max(1, train_stride)], val_w[:: max(1, val_stride)]
+    if model_factory is None:
+        model = AxonMapWorld(
+            grid, n_elec, dim=dim, depth=depth, heads=heads, patch_size=patch_size, dt_ms=dt_ms
+        )
+    else:
+        model = model_factory(grid, n_elec, dt_ms)
+    model = model.to(device)
+    loss_fn = loss_fn or _rollout_loss
     from ..core.config import Config
     from ..implants.registry import build_implant
 
@@ -384,9 +497,14 @@ def distill_hdf5(
     opt = torch.optim.Adam(model.parameters(), lr=lr)
     start_epoch = 0
     history: list[float] = []
+    val_history: list[float] = []
     ckpt = Path(ckpt_path) if ckpt_path else None
+    if init_ckpt and (ckpt is None or not ckpt.exists()):
+        blob = torch.load(Path(init_ckpt), map_location="cpu", weights_only=False)
+        model.load_state_dict(blob["model"])
+        model.to(device)
     if ckpt is not None and ckpt.exists():
-        start_epoch, history = _load_ckpt(ckpt, model, opt)
+        start_epoch, history, val_history = _load_ckpt(ckpt, model, opt)
         model.to(device)
 
     train_ds = AxonSequenceDataset(dataset_path, train_w, scale)
@@ -407,6 +525,7 @@ def distill_hdf5(
     signal.signal(signal.SIGTERM, _on_term)
     t_load = 0.0
     t_step = 0.0
+    t_val = 0.0
     n_samples = 0
     try:
         for epoch in range(start_epoch, epochs):
@@ -419,7 +538,7 @@ def distill_hdf5(
                 t0 = time.perf_counter()
                 opt.zero_grad()
                 with torch.autocast(device.type, dtype=torch.bfloat16, enabled=bf16):
-                    loss = _rollout_loss(model, batch)
+                    loss = loss_fn(model, batch)
                 loss.backward()
                 opt.step()
                 _sync(device)
@@ -431,11 +550,15 @@ def distill_hdf5(
                 if stop["flag"]:
                     break
             history.append(total / max(count, 1))
+            t0 = time.perf_counter()
+            val_history.append(_eval_mse(model, val_loader, device, pin, bf16, loss_fn))
+            t_val += time.perf_counter() - t0
             if ckpt is not None:
-                _save_ckpt(ckpt, model, opt, epoch + 1, history)
+                _save_ckpt(ckpt, model, opt, epoch + 1, history, val_history)
             if stop["flag"]:
                 break
-        val_mse = _eval_mse(model, val_loader, device, pin, bf16)
+        if not val_history:
+            val_history.append(_eval_mse(model, val_loader, device, pin, bf16, loss_fn))
     finally:
         signal.signal(signal.SIGTERM, previous)
         train_ds.close()
@@ -445,11 +568,22 @@ def distill_hdf5(
     timing = {
         "data_load_s": t_load,
         "forward_backward_s": t_step,
+        "validation_s": t_val,
         "n_samples": n_samples,
         "samples_per_s": n_samples / max(t_load + t_step, 1e-9),
         "peak_gpu_mem_bytes": int(peak),
-        "val_mse": val_mse,
+        "val_mse": val_history[-1],
         "loss_history": history,
+        "val_history": val_history,
+        "batch_size": batch_size,
+        "num_workers": num_workers,
+        "rollout_k": rollout_k,
+        "grid_shape": list(grid),
+        "n_electrodes": n_elec,
+        "n_train_windows": len(train_w),
+        "n_val_windows": len(val_w),
+        "n_parameters": sum(p.numel() for p in model.parameters()),
+        "bf16": bool(bf16),
         "device": str(device),
     }
     if timing_path is not None:
@@ -461,13 +595,14 @@ def distill_hdf5(
 
 
 @torch.no_grad()
-def _eval_mse(model, loader, device, pin: bool, bf16: bool = False) -> float:
+def _eval_mse(model, loader, device, pin: bool, bf16: bool = False, loss_fn=None) -> float:
+    loss_fn = loss_fn or _rollout_loss
     model.eval()
     total, count = 0.0, 0
     for batch in loader:
         batch = {k: v.to(device, non_blocking=pin) for k, v in batch.items()}
         with torch.autocast(device.type, dtype=torch.bfloat16, enabled=bf16):
-            loss = _rollout_loss(model, batch)
+            loss = loss_fn(model, batch)
         total += float(loss.detach().cpu())
         count += 1
     return total / max(count, 1)
@@ -531,6 +666,9 @@ def distill_online(
 @click.option("--implant", "implant_name", type=str, default="argusii", show_default=True)
 @click.option("--num-workers", type=int, default=0, show_default=True)
 @click.option("--bf16", is_flag=True, default=False)
+@click.option("--train-stride", type=int, default=1, show_default=True)
+@click.option("--val-stride", type=int, default=1, show_default=True)
+@click.option("--init-ckpt", type=click.Path(path_type=Path), default=None)
 def cli(
     dataset_path,
     epochs,
@@ -545,6 +683,9 @@ def cli(
     implant_name,
     num_workers,
     bf16,
+    train_stride,
+    val_stride,
+    init_ckpt,
 ):
     dev = get_device(device)
     if dev.type != "cuda" and device == "cuda":
@@ -563,6 +704,9 @@ def cli(
         depth=depth,
         num_workers=num_workers,
         bf16=bf16,
+        train_stride=train_stride,
+        val_stride=val_stride,
+        init_ckpt=init_ckpt,
     )
     click.echo(
         f"val_mse={out['val_mse']:.6f} samples_per_s={out['samples_per_s']:.2f} "

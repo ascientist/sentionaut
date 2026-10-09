@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import click
@@ -34,6 +34,14 @@ class ActionRanges:
     axlambda: tuple[float, float] = (400.0, 700.0)
     rho_cortical: tuple[float, float] = (800.0, 1200.0)
     max_active: int = 3
+
+
+@dataclass
+class StreamSchedule:
+    """Stimulation as a video: holds let brightness rise, gaps let it fade."""
+
+    hold_prob: float = 0.5
+    silent_prob: float = 0.3
 
 
 def _uniform(rng, lo, hi):
@@ -127,6 +135,7 @@ def generate_world_dataset(
     silent_tail: int = 0,
     timing_path: Path | None = None,
     write_slab: int = 32,
+    stream: StreamSchedule | None = None,
 ) -> Path:
     if not configs:
         raise click.BadParameter("at least one config required")
@@ -172,6 +181,7 @@ def generate_world_dataset(
         meta.attrs["action_features"] = json.dumps(["amp", "freq", "phase_dur"])
         meta.attrs["dt_ms"] = float(built[0][0].dt_ms)
         meta.attrs["costim_enabled"] = bool(built[0][0].costim_enabled)
+        meta.attrs["stream"] = json.dumps(stream.__dict__ if stream else None)
 
         g = h5.create_group("world")
         ckw = dict(compression=compression) if compression else {}
@@ -229,9 +239,27 @@ def generate_world_dataset(
 
             for _ in range(episodes):
                 state = wm.initial_state(device)
+                subject = sample_action(cfg, n_e, rng, ranges, device)[1] if stream else None
+                held = None
                 for step in range(steps_per_ep):
                     silent = step >= sequence_length
-                    action, rec = sample_action(cfg, n_e, rng, ranges, device, silent=silent)
+                    if stream and not silent:
+                        silent = rng.random() < stream.silent_prob
+                    if (
+                        stream
+                        and not silent
+                        and held is not None
+                        and rng.random() < stream.hold_prob
+                    ):
+                        action, rec = held
+                    else:
+                        action, rec = sample_action(cfg, n_e, rng, ranges, device, silent=silent)
+                    if subject is not None:
+                        # One retina per video: rho and axlambda are the subject, not the frame.
+                        axl = subject["axlambda"] if action.axlambda is not None else None
+                        action = replace(action, rho=subject["rho"], axlambda=axl)
+                        rec = {**rec, "rho": subject["rho"], "axlambda": subject["axlambda"]}
+                    held = None if silent else (action, rec)
                     s_prev = state.image.detach()
                     t0 = time.perf_counter()
                     state = wm.step(state, action)
@@ -326,6 +354,11 @@ def _pair(ctx, param, value):
 @click.option("--compression", type=str, default=None)
 @click.option("--timing", "timing_path", type=click.Path(path_type=Path), default=None)
 @click.option("--write-slab", type=int, default=32, show_default=True)
+@click.option(
+    "--stream", is_flag=True, help="Video episodes: held stimulation, gaps, one subject each."
+)
+@click.option("--hold-prob", type=float, default=0.5, show_default=True)
+@click.option("--silent-prob", type=float, default=0.3, show_default=True)
 def world_cli(
     output_path,
     models,
@@ -341,6 +374,9 @@ def world_cli(
     compression,
     timing_path,
     write_slab,
+    stream,
+    hold_prob,
+    silent_prob,
 ):
     base = Config(
         model=list(models)[0],
@@ -363,6 +399,7 @@ def world_cli(
         silent_tail=silent_tail,
         timing_path=timing_path,
         write_slab=write_slab,
+        stream=StreamSchedule(hold_prob, silent_prob) if stream else None,
     )
     click.echo(str(path))
 

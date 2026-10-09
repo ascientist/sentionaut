@@ -99,5 +99,6 @@ implant, topo, model = build_components(cfg)
 
 Source: `src/sentionaut/models/axonmap.py`
 
-A specialist student of this model, with the same `step` and the fade left
-exact, is the [axon-map world model](axonmap-world.md).
+The torch implementation, the parity check, the CPU and GPU timings, and the
+distilled world model are the next page:
+[from the axon map to a world model](axonmap-world.md).
