@@ -159,7 +159,7 @@ def _plot_legacy_world(h5, episode_index, start_step, length, cols, cmap, annota
     return fig, axes_arr
 
 
-@click.group()
+@click.group(epilog="Docs: https://ascientist.github.io/sentionaut/user-guide/")
 def cli():
     """Visualization helpers for sentionaut datasets."""
 

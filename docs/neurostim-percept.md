@@ -1,6 +1,6 @@
 # NeuroStim-Percept: image targets through a world model
 
-[Home](index.md) · [Getting started](getting-started.md) · [Nomenclature](nomenclature.md) · [Models](models/index.md) · [NeuroStim](neurostim.md) · [References](references.md)
+[Home](index.md) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Nomenclature](nomenclature.md) · [Models](models/index.md) · [NeuroStim](neurostim.md) · [References](references.md)
 
 In [NeuroStim](neurostim.md) the target was a point in a 3-D latent space.
 Here it is an **image**. Stimulation drives a 16-D neural state, and a frozen

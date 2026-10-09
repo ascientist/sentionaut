@@ -104,7 +104,7 @@ def calibrate_subject(
 def cli():  # pragma: no cover
     import click
 
-    @click.command()
+    @click.command(epilog="Docs: https://ascientist.github.io/sentionaut/models/axonmap/")
     @click.option("--implant", type=str, default="argusii")
     @click.option("--targets", type=click.Path(exists=True, path_type=Path), required=True)
     @click.option("--output", type=click.Path(path_type=Path), required=True)

@@ -1,6 +1,6 @@
 # Nomenclature
 
-[Home](index.md) · [Getting started](getting-started.md) · [Nomenclature](nomenclature.md) · [Models](models/index.md) · [References](references.md)
+[Home](index.md) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Nomenclature](nomenclature.md) · [Models](models/index.md) · [References](references.md)
 
 Models are tagged with an ML-style **`source2target`** label built from a fixed
 modality vocabulary. The goal is a short name that says what goes in and what

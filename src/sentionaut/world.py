@@ -3,6 +3,8 @@
 All three analytical models are stateful: Axon Map and Scoreboard carry a fading
 brightness field via ``FadingTemporal``; Dynaphos additionally threads per-
 electrode activation/charge in ``State.aux`` and exposes rasterized A/Q maps.
+
+Docs: https://ascientist.github.io/sentionaut/user-guide/#action-and-state-schema
 """
 
 from __future__ import annotations

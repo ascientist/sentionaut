@@ -10,6 +10,7 @@ repo_name = "ascientist/sentionaut"
 nav = [
   { "Home" = "index.md" },
   { "Getting started" = "getting-started.md" },
+  { "User guide" = "user-guide.md" },
   { "Nomenclature" = "nomenclature.md" },
   { "Models" = [
     "models/index.md",
@@ -19,6 +20,7 @@ nav = [
     "models/scoreboard.md",
     "models/dynaphos.md",
     "models/world-model.md",
+    "models/axonmap-world.md",
   ] },
   { "NeuroStim (control)" = [
     "neurostim-formulation.md",

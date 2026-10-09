@@ -12,6 +12,8 @@ on the percept.
 
 Run: ``uv run python examples/neurostim_percept_tutorial.py`` (about 45 min on
 4 CPU cores; ``--quick`` for a smoke run). Downloads MNIST to ``data/mnist``.
+
+Docs: https://ascientist.github.io/sentionaut/neurostim-percept/
 """
 
 # %%

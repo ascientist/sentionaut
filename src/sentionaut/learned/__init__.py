@@ -1,4 +1,7 @@
-"""Learned unified world model + dataset + training/ablation."""
+"""Learned unified world model + dataset + training/ablation.
+
+Docs: https://ascientist.github.io/sentionaut/models/world-model/
+"""
 
 from .axon_world import AxonMapWorld
 from .dataset import WorldTransitionDataset

@@ -5,7 +5,7 @@
     min_π  E[ Σ_t ‖D x_t − z*‖² + λ‖u_t‖² ]      π sees (z*, o_≤t, u_<t) only
 
 Four experiments, each isolating one source of difficulty (see
-docs/neurostim-formulation.md):
+https://ascientist.github.io/sentionaut/neurostim-formulation/):
 
 1. The benchmark ladder L0 → L3: known patient, random patients, partial
    observation, drift.

@@ -20,6 +20,12 @@ dependencies = [
     "huggingface_hub>=0.26",
 ]
 
+[project.urls]
+Homepage = "https://github.com/ascientist/sentionaut"
+Documentation = "https://ascientist.github.io/sentionaut/"
+Repository = "https://github.com/ascientist/sentionaut"
+Issues = "https://github.com/ascientist/sentionaut/issues"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",

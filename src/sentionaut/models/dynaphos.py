@@ -2,6 +2,8 @@
 
 Gaussian phosphenes in dva whose size derives from cortical magnification +
 stimulation current, plus a temporal leaky integrator with charge accumulation.
+
+Docs: https://ascientist.github.io/sentionaut/models/dynaphos/
 """
 
 from __future__ import annotations
