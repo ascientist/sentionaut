@@ -384,6 +384,21 @@ def fit_world_model(wm, opt, buf: Replay, steps: int, batch: int, k: int, g) -> 
     return total / max(steps, 1)
 
 
+@torch.no_grad()
+def world_model_error(wm, imgs, phys, acts) -> float:
+    """Relative error of whole-episode rollouts from the logged start.
+
+    MSE over all steps divided by the mean square of the logged percepts, so 1
+    is no better than predicting darkness.
+    """
+    img, mem = imgs[:, 0], wm.init_memory(phys[:, 0])
+    err = 0.0
+    for t in range(acts.shape[1]):
+        img, mem = wm(img, mem, acts[:, t])
+        err += float(((img - imgs[:, t + 1]) ** 2).mean())
+    return err / acts.shape[1] / max(float((imgs[:, 1:] ** 2).mean()), 1e-12)
+
+
 def reinforce_loss(spec: TaskSpec, enc: Encoder, step_fn, target, sigma: float, g):
     """Score-function (REINFORCE) loss with a per-step batch-mean baseline.
 
@@ -427,6 +442,8 @@ class RunConfig:
     action_noise: float = 0.05  # std, fraction of a_max
     explore: float = 0.5  # fraction of collected episodes with random stimulation
     wm_steps: int = 40
+    wm_warmup_steps: int = 1000  # fit steps on the warm-up buffer, before any imagination
+    wm_max_error: float = 0.1  # skip imagination above this relative rollout error
     policy_steps: int = 20
     wm_window: int = 8
     capacity: int = 4096
@@ -533,13 +550,19 @@ def run(rc: RunConfig, teacher: Teacher | None = None, targets: dict | None = No
 
     log = []
     clock, teacher_steps, imagined_steps, next_eval = 0.0, 0, 0, 0.0
-    wm_loss = float("nan")
+    wm_loss = wm_err = float("nan")
+    skipped = 0
 
     def record(final: bool = False):
         r = evaluate(teacher, enc, test if final else test[: rc.eval_n])
         r["final"] = final
         r.update(
-            t=clock, teacher_steps=teacher_steps, imagined_steps=imagined_steps, wm_loss=wm_loss
+            t=clock,
+            teacher_steps=teacher_steps,
+            imagined_steps=imagined_steps,
+            wm_loss=wm_loss,
+            wm_err=wm_err,
+            skipped_cycles=skipped,
         )
         log.append(r)
 
@@ -568,7 +591,8 @@ def run(rc: RunConfig, teacher: Teacher | None = None, targets: dict | None = No
             opt.step()
             teacher_steps += rc.batch * spec.horizon
         else:
-            n_new = rc.warmup_episodes if len(buf) == 0 else rc.collect
+            first = len(buf) == 0
+            n_new = rc.warmup_episodes if first else rc.collect
             with torch.no_grad():
                 for s in range(0, n_new, rc.batch):
                     y = batch_targets(min(rc.batch, n_new - s))
@@ -578,9 +602,17 @@ def run(rc: RunConfig, teacher: Teacher | None = None, targets: dict | None = No
                     buf.add(imgs, phys, acts.clamp(0, spec.a_max))
             teacher_steps += n_new * spec.horizon
             wm.train()
-            wm_loss = fit_world_model(wm, wm_opt, buf, rc.wm_steps, rc.batch, rc.wm_window, g)
+            # An unfitted model's gradient is mostly the charge penalty, which
+            # pushes every electrode under the gate, where no gradient brings it
+            # back. Fit long before the first imagination, and imagine only with
+            # a model that predicts the episodes just collected.
+            steps = rc.wm_warmup_steps if first else rc.wm_steps
+            wm_loss = fit_world_model(wm, wm_opt, buf, steps, rc.batch, rc.wm_window, g)
+            wm_err = world_model_error(wm, imgs, phys, acts.clamp(0, spec.a_max))
+            policy_steps = rc.policy_steps if wm_err <= rc.wm_max_error else 0
+            skipped += policy_steps == 0
             wm.requires_grad_(False)
-            for _ in range(rc.policy_steps):
+            for _ in range(policy_steps):
                 y = batch_targets(rc.batch)
                 if rc.arm == "wm-bptt":
                     imgs, acts = model_rollout(wm, teacher, enc, y)

@@ -16,6 +16,7 @@ from sentionaut.learned.imagine import (
     fit_world_model,
     run,
     teacher_rollout,
+    world_model_error,
 )
 
 
@@ -79,6 +80,7 @@ def test_arms_run_and_log(setup, tmp_path, arm):
         warmup_episodes=16,
         collect=8,
         wm_steps=2,
+        wm_warmup_steps=2,
         policy_steps=2,
         threads=1,
         out=str(tmp_path),
@@ -89,6 +91,45 @@ def test_arms_run_and_log(setup, tmp_path, arm):
     assert log[-1]["teacher_steps"] > 0
     saved = json.loads((tmp_path / f"dynaphos_{arm}_s0.json").read_text())
     assert saved["config"]["arm"] == arm
+
+
+def test_untrained_world_model_error_is_one(setup):
+    teacher, targets = setup
+    from sentionaut.learned.imagine import Encoder
+
+    enc = Encoder(teacher.grid, teacher.n_elec, teacher.spec.a_max)
+    g = torch.Generator().manual_seed(3)
+    with torch.no_grad():
+        imgs, phys, acts = teacher_rollout(teacher, enc, targets["train"][:8], explore=0.5, g=g)
+    wm = TokenWorldModel(teacher.grid, teacher.electrode_xy(), teacher.spec.a_max, teacher.n_phys)
+    # The output layer starts at zero, so the model predicts the blank start throughout.
+    err = world_model_error(wm, imgs, phys, acts.clamp(0, teacher.spec.a_max))
+    assert err == pytest.approx(1.0)
+
+
+@pytest.mark.parametrize("max_error", [0.0, float("inf")])
+def test_imagination_waits_for_an_accurate_model(setup, tmp_path, max_error):
+    teacher, targets = setup
+    rc = RunConfig(
+        preset="dynaphos",
+        budget_s=1.0,
+        batch=8,
+        eval_n=4,
+        warmup_episodes=16,
+        collect=8,
+        wm_steps=2,
+        wm_warmup_steps=2,
+        wm_max_error=max_error,
+        policy_steps=2,
+        threads=1,
+        out=str(tmp_path),
+    )
+    last = run(rc, teacher=teacher, targets=targets)["log"][-1]
+    assert last["wm_err"] > 0
+    if max_error == 0.0:
+        assert last["imagined_steps"] == 0 and last["skipped_cycles"] > 0
+    else:
+        assert last["imagined_steps"] > 0 and last["skipped_cycles"] == 0
 
 
 def test_baselines(setup, tmp_path):

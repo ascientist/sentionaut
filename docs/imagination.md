@@ -64,11 +64,14 @@ The world-model loop follows SuperMimic's three phases, repeated:
 
 1. **Collect** 64 teacher episodes with the current encoder plus action noise
    (5% of `a_max`) into a replay buffer (512 episodes on the first cycle).
-2. **Fit** the world model for 40 steps on 8-step autoregressive windows
-   seeded at logged states (Dynaphos: the per-electrode activation, charge
-   and size).
+2. **Fit** the world model on 8-step autoregressive windows seeded at logged
+   states (Dynaphos: the per-electrode activation, charge and size): 1000
+   steps on the warm-up buffer, then 40 steps per cycle.
 3. **Imagine**: 20 encoder updates by backpropagating the episode loss
-   through the frozen world model, from the blank percept.
+   through the frozen world model, from the blank percept. The cycle skips
+   this phase when the model's rollout error on the episodes just collected
+   is above 0.1 (squared error over the mean square of the logged percepts,
+   so 1 is no better than predicting darkness).
 
 **The world model is not SuperMimic's MLP.** `TokenWorldModel` treats each
 electrode as a token with its own recurrent memory (a shared GRU cell driven
@@ -122,6 +125,48 @@ The world-model arm still collapses to no stimulation, on both teachers and
 in all six runs: final charge is about 10⁻⁸ and the final loss equals the
 zero-stimulation baseline. The exploration fix described under the CPU pilot
 did not prevent it.
+
+### Why the world-model arm collapsed
+
+These runs predate the warm-up fit and the error check described under
+[Arms](#arms). The collapse is complete after the first cycle: charge falls
+from 0.50 to about 0.002 after one 40-step model fit and 20 encoder updates,
+in every run.
+
+- **The first model barely responds to amplitude.** In a CPU reproduction
+  (Dynaphos, one seed), after 40 fit steps the model's gradient of the loss
+  with respect to the amplitudes is 10 times smaller than the teacher's
+  (1.3 × 10⁻⁶ against 1.35 × 10⁻⁵), with cosine similarity 0.35. It is
+  almost all charge penalty, and it lowers every electrode, where the
+  teacher's lowers 67%. Adam takes full-size steps whatever the gradient's
+  size, so by the tenth encoder update 98% of electrodes are under the gate.
+- **The gate makes that state absorbing.** Below `a_min` the teacher's
+  percept does not depend on the amplitude, and the fitted model learns the
+  same flat response: after the collapse, the gradients through the teacher
+  and through the model are identical (cosine 1.00) and contain only the
+  charge term. Random-stimulation episodes show the model what "on" looks
+  like, but the encoder's own amplitudes sit where there is no gradient.
+
+After 1000 fit steps the same model's gradient matches the teacher's (cosine
+0.98, same size), and the encoder keeps about half of its electrodes on. A
+straight-through gate (gradient passed through `a_min` as if it were not
+there) neither prevented the collapse nor revived any electrode in the next
+two cycles, so it is not used.
+
+The error check is a guard, not the fix. On Dynaphos the relative rollout
+error after 40 fit steps is 0.51 and the check would have skipped that
+imagination phase; on the axon map it is already 0.05 and the check passes.
+Only the warm-up fit prevents the axon-map collapse.
+
+CPU check of the fix (one seed, three threads, 20-minute budget, synthetic
+line-drawing targets instead of MNIST, so the numbers are not comparable
+with the GPU table):
+
+| Teacher | First fit | Final loss | Charge | Zero stimulation |
+| --- | ---: | ---: | ---: | ---: |
+| Axon map | 1000 steps | 0.0298 | 0.179 | 0.1276 |
+| Axon map | 40 steps | 0.1276 | 0.000 | 0.1276 |
+| Dynaphos | 1000 steps | 0.0908 | 0.240 | 0.1283 |
 
 ### Throughput
 
