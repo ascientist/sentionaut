@@ -49,6 +49,8 @@ sentionaut-distill-axon = "sentionaut.learned.axon_world:cli"
 sentionaut-axon-report = "sentionaut.learned.axon_report:cli"
 sentionaut-axon-video = "sentionaut.learned.axon_video:cli"
 sentionaut-calibrate = "sentionaut.calibrate:cli"
+sentionaut-imagine = "sentionaut.learned.imagine:cli"
+sentionaut-fit-drawings = "sentionaut.patients:cli"
 
 [tool.uv.extra-build-dependencies]
 pulse2percept = ["numpy", "cython"]

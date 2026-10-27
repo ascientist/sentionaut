@@ -3,43 +3,48 @@
 [Home](index.md) · [Getting started](getting-started.md) · [User guide](user-guide.md) · [Nomenclature](nomenclature.md) · [Models](models/index.md) · [References](references.md)
 
 Models are tagged with an ML-style **`source2target`** label built from a fixed
-modality vocabulary. The goal is a short name that says what goes in and what
-comes out — the same pattern as `brain2text` or `image2text`.
+modality vocabulary, the same pattern as `image2text` or `speech2text`. The
+label says what goes in and what comes out.
 
 ## Vocabulary
 
-| Modality | Role |
+| Token | Meaning |
 | --- | --- |
-| `vision` | visual percept / phosphene appearance |
-| `image` | pixel grid as data (when distinct from percept) |
-| `video` | temporal visual stream |
-| `sound` | auditory signal |
-| `language` | text / speech tokens |
-| `brain` | neural tissue interface (retina or cortex stimulation, neural readout) |
+| `vision` | visual content: an image, a video frame, or a visual percept |
+| `sound` | an audio signal or an auditory percept |
+| `language` | text or speech tokens |
+| `stim` | electrical stimulation written into tissue: electrode amplitudes and pulse parameters |
+| `brain` | neural activity *recorded* from tissue (spikes, multi-unit activity, calcium imaging) |
 
-Only these tokens appear in modality tags. Tissue (retinal vs cortical) is a
-separate axis, not part of the tag.
+`stim` and `brain` are kept apart on purpose. They point in opposite
+directions: `stim` is what the implant writes, `brain` is what a recording
+reads. In the wider literature `brain2X` always means decoding `X` from
+recorded activity (`brain2text`, Brain2Image), so Sentionaut keeps that sense.
 
-## Direction
+Tissue (retinal or cortical) is a separate axis, not part of the tag.
 
-| Tag | Meaning |
-| --- | --- |
-| `brain2vision` | neural stimulation → predicted visual percept |
-| `vision2brain` | visual input → stimulation / neural encoding |
+## The three directions
 
-Examples of the same pattern outside this repo: `brain2text`, `image2text`,
-`speech2text`.
+| Tag | Role | Example | In Sentionaut |
+| --- | --- | --- | --- |
+| `vision2stim`, `sound2stim` | **encoder**: signal → stimulation | the processor of a retinal or cochlear implant | `PhospheneMapEncoder`, `ClosedLoopVisionEncoder`, `BandEnvelopeEncoder` |
+| `stim2vision` | **forward model** (generator): stimulation → percept | pulse2percept, Dynaphos | every percept model and learned world model |
+| `brain2vision` | **decoder**: recorded activity → visual content | POYO+, image reconstruction from V1 | none yet (NeuroStim-Percept's toy readout `D` is one) |
+
+See [Architecture](architecture.md) for how they connect.
 
 ## Current models
 
-Every Sentionaut percept model (and the learned world model) is **`brain2vision`**:
-an `Action` of electrode drive produces a `State.image` phosphene map. Retinal
-vs cortical differs by implant and topography, not by modality tag.
+Every percept model (axon map, Scoreboard, Dynaphos) and every learned world
+model is **`stim2vision`**: an `Action` of electrode amplitudes produces a
+percept. Retinal and cortical models differ by implant and topography, not
+by tag.
 
-There are no `vision2brain` (encoding) models in-tree yet. When they appear,
-they use the same vocabulary.
+Earlier versions of these docs tagged the forward models `brain2vision`. That
+collided with the standard decoding sense and is retired for them.
 
 ## What is not tagged
 
 Implants and topography maps are supporting geometry. They do not get a
-`source2target` label; they are described under components on the home page.
+`source2target` label; they are described under components in the
+[user guide](user-guide.md).

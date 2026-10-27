@@ -195,6 +195,52 @@ class DynaphosTorch(PerceptModel):
         )
         return a_map, q_map
 
+    def initial_state_batch(self, n: int) -> dict[str, torch.Tensor]:
+        """Zero per-electrode state ``{A, Q, sigma}`` of shape ``(n, E)``."""
+        topo = self.topography
+        z = torch.zeros(
+            n, self.implant.n_electrodes, device=topo.grid_x.device, dtype=topo.grid_x.dtype
+        )
+        return {"A": z, "Q": z.clone(), "sigma": z.clone()}
+
+    def step_batch(
+        self, state: dict[str, torch.Tensor] | None, amp: torch.Tensor
+    ) -> tuple[dict[str, torch.Tensor], torch.Tensor]:
+        """Batched, differentiable step: ``amp (B, E)`` in µA -> (state, image ``(B, H, W)``).
+
+        Same equations as ``step`` (default frequency and pulse width, no pose,
+        no co-stimulation). Activation below ``a_thr`` renders nothing, as in
+        ``_render``; that threshold has no gradient.
+        """
+        topo = self.topography
+        amp = amp.to(device=topo.grid_x.device, dtype=topo.grid_x.dtype)
+        if state is None:
+            state = self.initial_state_batch(amp.shape[0])
+        A, Q, sigma = state["A"], state["Q"], state["sigma"]
+        Ieff = torch.clamp((amp - self.rheobase - Q) * self.freq * (self.p_dur / 1000.0), min=0.0)
+        Q = Q + ((-Q / (self.tau_trace / 1000.0)) + Ieff * self.kappa_trace) * (self.dt / 1000.0)
+        D = 2.0 * torch.sqrt(torch.clamp(amp, min=1e-12) / self.excitability)
+        P = D / self.M
+        sigma = torch.where(amp > 0, torch.clamp(P / 2.0, min=1e-22), sigma)
+        A = A + ((-A / (self.tau_act / 1000.0)) + Ieff * 1e-6) * (self.dt / 1000.0)
+        bright = torch.sigmoid(self.sig_slope * (A - self.a50)) * (A >= self.a_thr).to(A.dtype)
+        s = torch.clamp(sigma, min=1e-6)
+        x0, y0 = self.ploc[:, 0], self.ploc[:, 1]
+        gx = torch.exp(
+            -((self.xRange[None, None, :] - x0[None, :, None]) ** 2) / (2.0 * s[..., None] ** 2)
+        )
+        if topo.polimeni.split_map:
+            left = self.xRange[None, :] <= 0
+            cut = torch.where(self.elec_left[:, None], left, ~left)
+            gx = gx * (~cut).to(gx.dtype)[None]
+        gy = torch.exp(
+            -((self.yRange[None, None, :] - y0[None, :, None]) ** 2) / (2.0 * s[..., None] ** 2)
+        )
+        image = torch.einsum("be,beh,bew->bhw", bright, gy, gx).clamp(0.0, 1.0)
+        if self.max_percept is not None:
+            image = torch.clamp(image, max=self.max_percept)
+        return {"A": A, "Q": Q, "sigma": sigma}, image
+
     def forward(self, action: Action) -> torch.Tensor:
         return self.step(None, action).image
 

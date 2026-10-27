@@ -12,6 +12,7 @@ nav = [
   { "Getting started" = "getting-started.md" },
   { "User guide" = "user-guide.md" },
   { "Nomenclature" = "nomenclature.md" },
+  { "Architecture" = "architecture.md" },
   { "Models" = [
     "models/index.md",
     "models/demos.md",
@@ -20,7 +21,10 @@ nav = [
     "models/scoreboard.md",
     "models/dynaphos.md",
     "models/world-model.md",
-    "models/axonmap-world.md",
+  ] },
+  { "Encoders through world models" = [
+    "imagination.md",
+    "patient-data.md",
   ] },
   { "NeuroStim (control)" = [
     "neurostim-formulation.md",

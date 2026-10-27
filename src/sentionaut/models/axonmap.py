@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import torch
 
-from ..core.base import Action, Implant, PerceptModel, State
+from ..core.base import Action, Implant, PerceptModel, Pose, State
 from ..topography.axon_map import AxonMapTopography
 from . import effects
 from .fading import FadingTemporalTorch
@@ -87,6 +87,136 @@ class BiphasicAxonMapTorch(PerceptModel):
         if self.max_percept is not None:
             out = torch.clamp(out, max=self.max_percept)
         return out
+
+    def spatial_forward_batch(
+        self,
+        amp: torch.Tensor,
+        freq: float | torch.Tensor = 20.0,
+        phase_dur: float | torch.Tensor = 0.45,
+        rho: float | torch.Tensor | None = None,
+        axlambda: float | torch.Tensor | None = None,
+        chunk: int = 8,
+        cutoff: float | None = None,
+        pose: Pose | None = None,
+    ) -> torch.Tensor:
+        """Batched, differentiable drive: ``amp (B, E)`` -> ``(B, H, W)``.
+
+        Same arithmetic as ``spatial_forward``. Electrodes with ``amp == 0`` are
+        dropped (pulse2percept skips them), so brightness jumps from 0 to
+        ``a3 * freq`` when an electrode turns on; that step has no gradient.
+        ``freq`` and ``phase_dur`` are scalars or ``(B, E)``. The implant pose
+        is ``pose`` (default: as built).
+
+        ``cutoff`` (in Gaussian widths) keeps, per electrode, only the axon
+        segments within ``cutoff * rho * sqrt(F_size_max)``; the dropped terms
+        are below ``exp(-cutoff**2 / 2)`` of the electrode's peak. ``None`` is
+        exact. It needs scalar ``freq`` and ``phase_dur``, the build ``rho`` and
+        no ``pose``.
+        """
+        if cutoff is not None:
+            if pose is not None:
+                raise ValueError("cutoff does not support a pose")
+            return self._spatial_forward_sparse(amp, freq, phase_dur, axlambda, cutoff)
+        topo = self.topography
+        coords, d_soma, mask = topo.coords, topo.d_soma, topo.mask
+        dtype, device = coords.dtype, coords.device
+        amp = amp.to(device=device, dtype=dtype)
+        n_b, n_e = amp.shape
+        freq = torch.as_tensor(freq, device=device, dtype=dtype).expand(n_b, n_e)
+        pdur = torch.as_tensor(phase_dur, device=device, dtype=dtype).expand(n_b, n_e)
+        rho = torch.as_tensor(self.rho if rho is None else rho, device=device, dtype=dtype)
+        axl = torch.as_tensor(
+            self.axlambda if axlambda is None else axlambda, device=device, dtype=dtype
+        )
+        shared_pdur = torch.as_tensor(phase_dur).numel() == 1
+        on = (amp > 0).to(dtype)
+        fb = effects.f_bright(freq, amp, pdur, self.effects) * on
+        fs = effects.f_size(freq, amp, pdur, rho, self.effects)
+        fst = effects.f_streak(freq, amp, pdur, axl, self.effects)
+        sens = torch.exp(-(d_soma**2) / (2.0 * axl**2))
+        elec = self.implant.electrode_coords(pose).to(device=device, dtype=dtype)
+        acc = torch.zeros(n_b, *d_soma.shape, device=device, dtype=dtype)
+        for s in range(0, n_e, chunk):
+            e = slice(s, s + chunk)
+            d2 = ((coords[None] - elec[e, None, None, :]) ** 2).sum(-1)  # (c, P, S)
+            spatial = torch.exp(-d2[None] / (2.0 * rho**2 * fs[:, e, None, None]))
+            if shared_pdur:  # the streak does not depend on amplitude: share it over the batch
+                streak = (sens[None] ** (1.0 / fst[0, e, None, None]) * mask)[None]
+            else:
+                streak = sens[None, None] ** (1.0 / fst[:, e, None, None]) * mask
+            acc = acc + (fb[:, e, None, None] * spatial * streak).sum(1)
+        intensity = acc.max(dim=-1).values
+        intensity = torch.where(
+            intensity > self.thresh_percept, intensity, torch.zeros_like(intensity)
+        )
+        out = intensity.reshape(n_b, *topo.grid_shape)
+        if self.max_percept is not None:
+            out = torch.clamp(out, max=self.max_percept)
+        return out
+
+    def _sparse_index(self, cutoff: float, max_amp: float = 3.0, pdur: float = 0.45):
+        """Per-electrode flat (pixel, segment) indices within the cutoff radius, padded."""
+        key = (cutoff, max_amp, pdur, float(self.rho))
+        if getattr(self, "_sparse_cache", (None,))[0] == key:
+            return self._sparse_cache[1]
+        topo = self.topography
+        coords, mask = topo.coords, topo.mask
+        p = self.effects
+        fs_max = max(p.a5 * max_amp * (p.a1 + p.a0 * pdur) + p.a6, p.min_rho**2 / self.rho**2)
+        r2 = (cutoff * self.rho) ** 2 * fs_max
+        elec = self.implant.electrode_coords().to(coords)
+        flat = coords.reshape(-1, 2)
+        keep = [torch.nonzero(((flat - xy) ** 2).sum(-1) <= r2).flatten() for xy in elec]
+        k = max(1, max(len(i) for i in keep))
+        pad = flat.shape[0]  # dummy slot past the end
+        idx = torch.full((len(keep), k), pad, dtype=torch.long, device=coords.device)
+        for j, i in enumerate(keep):
+            idx[j, : len(i)] = i
+        valid = idx < pad
+        safe = idx.clamp(max=pad - 1)
+        d2 = ((flat[safe] - elec[:, None, :]) ** 2).sum(-1)
+        dsoma = topo.d_soma.reshape(-1)[safe]
+        m = mask.reshape(-1)[safe] * valid
+        cache = {"idx": idx, "d2": d2, "dsoma": dsoma, "mask": m, "fs_max": fs_max}
+        self._sparse_cache = (key, cache)
+        return cache
+
+    def _spatial_forward_sparse(self, amp, freq, phase_dur, axlambda, cutoff):
+        topo = self.topography
+        dtype, device = topo.coords.dtype, topo.coords.device
+        c = self._sparse_index(cutoff, pdur=float(phase_dur))
+        amp = amp.to(device=device, dtype=dtype)
+        n_b, n_e = amp.shape
+        freq = torch.as_tensor(freq, device=device, dtype=dtype)
+        pdur = torch.as_tensor(phase_dur, device=device, dtype=dtype)
+        axl = torch.as_tensor(
+            self.axlambda if axlambda is None else axlambda, device=device, dtype=dtype
+        )
+        fb = effects.f_bright(freq, amp, pdur, self.effects) * (amp > 0).to(dtype)
+        fs = effects.f_size(freq, amp, pdur, self.rho, self.effects)
+        fst = effects.f_streak(freq, amp[:1, :1], pdur, axl, self.effects).reshape(-1)[0]
+        streak = torch.exp(-(c["dsoma"] ** 2) / (2.0 * axl**2)) ** (1.0 / fst) * c["mask"]
+        spatial = torch.exp(-c["d2"][None] / (2.0 * self.rho**2 * fs[..., None]))
+        contrib = fb[..., None] * spatial * streak[None]  # (B, E, K)
+        n_ps = topo.coords.shape[0] * topo.coords.shape[1]
+        acc = torch.zeros(n_b, n_ps + 1, device=device, dtype=dtype)
+        acc = acc.scatter_add(1, c["idx"].reshape(1, -1).expand(n_b, -1), contrib.reshape(n_b, -1))
+        acc = acc[:, :n_ps].view(n_b, *topo.coords.shape[:2])
+        intensity = acc.max(dim=-1).values
+        intensity = torch.where(
+            intensity > self.thresh_percept, intensity, torch.zeros_like(intensity)
+        )
+        out = intensity.reshape(n_b, *topo.grid_shape)
+        if self.max_percept is not None:
+            out = torch.clamp(out, max=self.max_percept)
+        return out
+
+    def step_batch(self, brightness: torch.Tensor | None, amp: torch.Tensor, **kw) -> torch.Tensor:
+        """One batched fade step: ``(B, H, W)`` brightness and ``(B, E)`` amp -> next."""
+        drive = self.spatial_forward_batch(amp, **kw)
+        if brightness is None:
+            brightness = torch.zeros_like(drive)
+        return self.fading.step(brightness, -drive, self.dt_ms)
 
     def forward(self, action: Action) -> torch.Tensor:
         return self.spatial_forward(action)

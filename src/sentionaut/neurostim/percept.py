@@ -12,8 +12,8 @@ Pipeline::
 - **World model** ``W``: GRU trained only on observed (stimulation, percept)
   episodes. From the resting percept (and, for random patients, a calibration
   probe) it predicts the latent trajectory, decoded by the same ``D``.
-  ``D`` stands in for a known ``brain2vision`` readout, like the repo's percept
-  models. The patient-specific part, stimulation → neural state, is learned.
+  ``D`` stands in for a known ``brain2vision`` readout (neural state -> image),
+  as the repo's percept models stand in for a known ``stim2vision`` model. The patient-specific part, stimulation → neural state, is learned.
 - **Policy** ``π(E(y), context) → a_{1:T}``: open-loop stimulation sequence,
   trained by backprop through ``W`` on the reconstruction loss
   ``Σ_{t ≥ t_hold} ||D(ẑ_t) − y||²``. No RL and no gradient through the brain.

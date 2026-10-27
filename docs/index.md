@@ -46,11 +46,23 @@ learned world model) are classified by **modality** — see
 
 | Model | Modality | Tissue | Paper |
 | --- | --- | --- | --- |
-| [Axon map](models/axonmap.md) | `brain2vision` | retinal | Granley & Beyeler 2021 |
-| [Axon-map world model](models/axonmap-world.md) | `brain2vision` | retinal | distilled from axon map |
-| [Scoreboard](models/scoreboard.md) | `brain2vision` | cortical | Beyeler et al. 2019 |
-| [Dynaphos](models/dynaphos.md) | `brain2vision` | cortical | van der Grinten et al. 2024 |
-| [World model](models/world-model.md) | `brain2vision` | multi | learned (no paper) |
+| [Axon map](models/axonmap.md) | `stim2vision` | retinal | Granley & Beyeler 2021 |
+| [Axon-map world model](models/axonmap-world.md) | `stim2vision` | retinal | distilled from axon map |
+| [Scoreboard](models/scoreboard.md) | `stim2vision` | cortical | Beyeler et al. 2019 |
+| [Dynaphos](models/dynaphos.md) | `stim2vision` | cortical | van der Grinten et al. 2024 |
+| [World model](models/world-model.md) | `stim2vision` | multi | learned (no paper) |
+
+## Encoders and forward models
+
+A prosthesis pairs an **encoder** (a signal in some modality → stimulation,
+`vision2stim`, `sound2stim`) with a **forward model** (stimulation → percept,
+`stim2vision`). [Architecture](architecture.md) defines both halves and how
+they connect. [Imagination](imagination.md) trains a vision encoder by
+backpropagating through a learned world model fitted online to the axon map
+or Dynaphos, after SuperMimic (Liao et al. 2026), and compares it with
+backpropagating through the analytical model itself.
+[Patient data](patient-data.md) fits the axon map to the phosphene drawings of
+Argus II users.
 
 ## Closed-loop control
 
@@ -66,6 +78,6 @@ bandit to PPO-Lagrangian and supervised DAgger imitation.
 image. It learns stimulation through a learned world model with a
 reconstruction loss, with no RL.
 
-All current models map neural stimulation to a predicted visual percept
-(`brain2vision`). Browse the [catalog](models/index.md) for details and
+All current percept models map electrode stimulation to a predicted visual
+percept (`stim2vision`). Browse the [catalog](models/index.md) for details and
 citations.

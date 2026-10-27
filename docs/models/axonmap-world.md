@@ -2,7 +2,7 @@
 
 [Home](../index.md) · [Getting started](../getting-started.md) · [User guide](../user-guide.md) · [Nomenclature](../nomenclature.md) · [Models](index.md) · [References](../references.md)
 
-**Modality:** `brain2vision` · **Tissue:** retinal
+**Modality:** `stim2vision` · **Tissue:** retinal
 
 This page continues the [axon map](axonmap.md). That page is the phenomenon:
 streaks, pulse parameters, and the demo. This page is the Sentionaut

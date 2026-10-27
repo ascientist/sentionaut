@@ -119,7 +119,7 @@ the physics. Action fields, amplitude units and the state schema are in the
 | World model | multi | learned | [page](https://ascientist.github.io/sentionaut/models/world-model/) |
 | Axon-map world model | retinal | distilled from axon map | [page](https://ascientist.github.io/sentionaut/models/axonmap-world/) |
 
-Every model maps electrode stimulation to a visual percept (`brain2vision`, see
+Every model maps electrode stimulation to a visual percept (`stim2vision`, see
 [Nomenclature](https://ascientist.github.io/sentionaut/nomenclature/)). Full
 citations: [References](https://ascientist.github.io/sentionaut/references/).
 

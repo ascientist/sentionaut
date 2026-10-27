@@ -2,7 +2,7 @@
 
 [Home](../index.md) · [Getting started](../getting-started.md) · [User guide](../user-guide.md) · [Nomenclature](../nomenclature.md) · [Models](index.md) · [References](../references.md)
 
-**Modality:** `brain2vision` · **Tissue:** cortical
+**Modality:** `stim2vision` · **Tissue:** cortical
 
 ## Paper
 

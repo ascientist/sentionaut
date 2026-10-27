@@ -29,8 +29,9 @@ loss = Σ_{t ≥ 10} ‖D(ẑ_t) − y‖²  + λ · charge
 | `π` (policy) | MLP: `E(y)` (+ context) → a 30-step, 24-electrode stimulation sequence; `tanh` bound and charge projection | backprop through `W` on MNIST train images |
 | classifier | frozen MLP on MNIST; the accuracy on percepts answers "is the digit recognisable?" | MNIST |
 
-`W` is allowed to use `D`. The percept readout stands in for a known
-`brain2vision` model, like the repo's phosphene models. What `W` must learn
+`W` is allowed to use `D`. The readout `D` maps neural state to an image, a
+`brain2vision` decoder; it stands in for a known readout, as the phosphene
+models stand in for a known `stim2vision` forward model. What `W` must learn
 is the patient-specific part: stimulation → neural state, including
 adaptation.
 
