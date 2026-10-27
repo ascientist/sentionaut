@@ -74,9 +74,11 @@ def main():
         pm = base.get("phosphene_map", {}).get("loss")
         finals = {arm: min(r["log"][-1]["loss"] for r in rs) for arm, rs in arms.items()}
         best = min(finals.values())
+        devices = sorted({r.get("device", "cpu") for rs in arms.values() for r in rs})
+        where = "one CPU thread" if devices == ["cpu"] else ", ".join(devices)
         fig, axes = plt.subplots(1, 2, figsize=(11, 4), sharey=True)
         for ax, key, xlabel in (
-            (axes[0], "t", "Training wall-clock (s, one CPU thread)"),
+            (axes[0], "t", f"Training wall-clock (s, {where})"),
             (axes[1], "teacher_steps", "Teacher steps (episodes × 10)"),
         ):
             for arm in ARMS:

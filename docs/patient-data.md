@@ -63,4 +63,16 @@ aligns each drawing on its electrode). The optic disc is at the default
 location for all subjects; Beyeler et al. measured it per subject, so the
 streak orientation is only as good as that default.
 
-Fit results will be added once the fits have run.
+### Fit results (Mila, L40S, commit `d25327f`, 150 Adam iterations)
+
+The fit did not work: `rho` and `axlambda` came back NaN for all three
+subjects. Only the threshold was fitted to a finite value, so the "fitted"
+test losses below come from a model with NaN physics parameters and are not
+a valid comparison with the defaults. Raw output:
+`docs/assets/patient-data/drawing_fits.json`.
+
+| Subject | Fitted `rho` (µm) | Fitted `axlambda` (µm) | Threshold | Test loss | Default test loss | Default terms (log area / elongation / orientation) | Train / test electrodes |
+| --- | --- | --- | ---: | ---: | ---: | --- | ---: |
+| S2 | NaN | NaN | 0.269 | 0.555 | 0.580 | 0.162 / 0.057 / 0.360 | 11 / 11 |
+| S3 | NaN | NaN | 0.343 | 1.678 | 1.309 | 0.449 / 0.221 / 0.638 | 9 / 9 |
+| S4 | NaN | NaN | 0.246 | 1.440 | 1.477 | 0.561 / 0.148 / 0.768 | 14 / 14 |

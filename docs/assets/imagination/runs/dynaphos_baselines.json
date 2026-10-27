@@ -1,0 +1,35 @@
+{
+ "spec": {
+  "model": "dynaphos",
+  "implant": "orion",
+  "xrange": [
+   -4.0,
+   1.0
+  ],
+  "yrange": [
+   -2.5,
+   2.5
+  ],
+  "xystep": 0.2,
+  "a_max": 300.0,
+  "a_min": 30.0,
+  "cutoff": 5.0,
+  "horizon": 10,
+  "charge_weight": 0.02,
+  "loss_from": 2
+ },
+ "baselines": {
+  "zero": {
+   "loss": 0.08916614949703217,
+   "mse": 0.08916614949703217,
+   "charge": 0.0
+  },
+  "phosphene_map": {
+   "loss": 0.06210653483867645,
+   "mse": 0.05737520009279251,
+   "charge": 0.23656664788722992,
+   "on": 0.5,
+   "gain": 1.0
+  }
+ }
+}

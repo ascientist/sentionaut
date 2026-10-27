@@ -1,0 +1,4 @@
+{"engine": "p2p-cython", "batch": 1, "mode": "forward", "threads": 8, "device": "cpu", "sec_per_call": 0.021581907855703474, "samples_per_s": 46.33510654785457}
+{"engine": "p2p-cython", "batch": 8, "mode": "forward", "threads": 8, "device": "cpu", "sec_per_call": 0.19990582717582583, "samples_per_s": 40.018843437533484}
+{"engine": "p2p-cython", "batch": 32, "mode": "forward", "threads": 8, "device": "cpu", "sec_per_call": 0.8315148201460639, "samples_per_s": 38.48398035092012}
+{"engine": "p2p-cython", "batch": 128, "mode": "forward", "threads": 8, "device": "cpu", "sec_per_call": 3.2157991575077176, "samples_per_s": 39.80348079299875}

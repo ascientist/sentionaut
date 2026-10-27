@@ -86,7 +86,65 @@ not an H100.
 ## Results
 
 The full runs are GPU jobs on the Mila cluster (below); their figures and
-tables come from `scripts/imagine_report.py` once the jobs finish.
+tables come from `scripts/imagine_report.py`.
+
+### GPU results (Mila, L40S)
+
+Commit `d25327f`, one NVIDIA L40S per task, 30-minute training budget,
+three seeds per arm, final loss on 256 held-out digits. Run files:
+`docs/assets/imagination/runs/`; per-seed tables:
+[results.md](assets/imagination/results.md).
+
+| Teacher | Arm | Final loss, mean [min, max] | Charge, mean | Teacher steps, mean |
+| --- | --- | ---: | ---: | ---: |
+| Axon map | Backprop through teacher | 0.0307 [0.0271, 0.0352] | 0.077 | 1.88 M |
+| Axon map | Backprop through world model | 0.0607 [0.0607, 0.0607] | 0.000 | 0.63 M |
+| Axon map | REINFORCE in teacher | 0.3396 [0.1973, 0.5551] | 0.447 | 4.49 M |
+| Axon map | REINFORCE in world model | 0.3188 [0.2670, 0.3548] | 0.452 | 0.73 M |
+| Axon map | Zero stimulation (baseline) | 0.0607 | 0.000 | |
+| Axon map | Phosphene map (baseline) | 0.0242 | 0.106 | |
+| Dynaphos | Backprop through teacher | 0.0724 [0.0708, 0.0740] | 0.130 | 60.67 M |
+| Dynaphos | Backprop through world model | 0.0892 [0.0892, 0.0892] | 0.000 | 0.71 M |
+| Dynaphos | REINFORCE in teacher | 0.1412 [0.1347, 0.1471] | 0.550 | 97.83 M |
+| Dynaphos | REINFORCE in world model | 0.1464 [0.1365, 0.1570] | 0.516 | 0.85 M |
+| Dynaphos | Zero stimulation (baseline) | 0.0892 | 0.000 | |
+| Dynaphos | Phosphene map (baseline) | 0.0621 | 0.237 | |
+
+![axon map curves](assets/imagination/axonmap_curves.png)
+
+![Dynaphos curves](assets/imagination/dynaphos_curves.png)
+
+No arm reaches the phosphene-map baseline, on either teacher, in any seed,
+in wall-clock or in teacher steps. Backprop through the teacher has the
+lowest final loss on both teachers in all three seeds.
+
+The world-model arm still collapses to no stimulation, on both teachers and
+in all six runs: final charge is about 10⁻⁸ and the final loss equals the
+zero-stimulation baseline. The exploration fix described under the CPU pilot
+did not prevent it.
+
+### Throughput
+
+Samples per second on one Mila node (L40S, 8 CPUs), from
+`scripts/bench_forward.py` (job 11408721; raw rows in `docs/assets/bench/`).
+pulse2percept's engines are third-party; the torch ports and the world model
+are this repository's. pulse2percept's cython engine was timed up to batch 128
+only. Its jax engine did not run: `uv run --with "jax[cuda12]"` installed
+NumPy 2.4.6, which pulse2percept 0.9.0's compiled extensions cannot import.
+
+| Engine | Device | Mode | 1 | 8 | 32 | 128 | 512 | 2048 |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| pulse2percept cython, 1 thread (third-party) | CPU | forward | 28 | 24 | 24 | 24 | | |
+| pulse2percept cython, 8 threads (third-party) | CPU | forward | 46 | 40 | 38 | 40 | | |
+| Torch port, exact | GPU | forward | 650 | 5,147 | 10,929 | 6,458 | 6,653 | 6,764 |
+| Torch port, exact | GPU | forward+backward | 297 | 2,405 | 2,941 | 2,032 | 2,049 | 2,056 |
+| Torch port, 5σ sparse | GPU | forward | 927 | 2,354 | 2,531 | 2,513 | 2,557 | 2,558 |
+| Torch port, 5σ sparse | GPU | forward+backward | 802 | 1,852 | 1,811 | 1,807 | 1,829 | out of memory |
+| World model | GPU | forward | 1,207 | 9,142 | 35,896 | 145,868 | 258,837 | 221,680 |
+| World model | GPU | forward+backward | 286 | 2,123 | 8,205 | 32,917 | 92,325 | 87,856 |
+
+Throughput stops growing at batch 1 for cython, batch 32 for the exact port,
+batch 8 for the sparse port and batch 512 for the world model.
 
 ### CPU pilot (axon map, one seed, one CPU thread, 30 minutes per arm)
 

@@ -1,0 +1,219 @@
+{
+ "config": {
+  "arm": "wm-bptt",
+  "preset": "axonmap",
+  "budget_s": 1800.0,
+  "batch": 64,
+  "lr": 0.001,
+  "seed": 1,
+  "eval_every_s": 120.0,
+  "eval_n": 64,
+  "collect": 64,
+  "action_noise": 0.05,
+  "explore": 0.5,
+  "wm_steps": 40,
+  "policy_steps": 20,
+  "wm_window": 8,
+  "capacity": 4096,
+  "warmup_episodes": 512,
+  "sigma": 0.5,
+  "threads": 4,
+  "device": "cuda",
+  "mnist": "/network/scratch/j/jacob.lavoie/sentionaut/mnist",
+  "out": "/tmp/imagine",
+  "tags": {}
+ },
+ "spec": {
+  "model": "axonmap",
+  "implant": "argusii",
+  "xrange": [
+   -15.0,
+   15.0
+  ],
+  "yrange": [
+   -10.0,
+   10.0
+  ],
+  "xystep": 1.0,
+  "a_max": 3.0,
+  "a_min": 0.5,
+  "cutoff": 5.0,
+  "horizon": 10,
+  "charge_weight": 0.02,
+  "loss_from": 2
+ },
+ "scale": 0.6554663181304932,
+ "device": "NVIDIA L40S",
+ "log": [
+  {
+   "loss": 0.13771885633468628,
+   "mse": 0.12771108746528625,
+   "charge": 0.5003886818885803,
+   "final": false,
+   "t": 0.0,
+   "teacher_steps": 0,
+   "imagined_steps": 0,
+   "wm_loss": NaN
+  },
+  {
+   "loss": 0.058021921664476395,
+   "mse": 0.057973623275756836,
+   "charge": 0.002414790214970708,
+   "final": false,
+   "t": 4.123118618503213,
+   "teacher_steps": 5120,
+   "imagined_steps": 12800,
+   "wm_loss": 0.011944883910473436
+  },
+  {
+   "loss": 0.057973816990852356,
+   "mse": 0.057973623275756836,
+   "charge": 9.727342330734245e-06,
+   "final": false,
+   "t": 125.50975351314992,
+   "teacher_steps": 46720,
+   "imagined_steps": 844800,
+   "wm_loss": 0.00013271620900923153
+  },
+  {
+   "loss": 0.05797368288040161,
+   "mse": 0.057973623275756836,
+   "charge": 2.6805405468621757e-06,
+   "final": false,
+   "t": 246.5283126058057,
+   "teacher_steps": 88320,
+   "imagined_steps": 1676800,
+   "wm_loss": 6.988594068388921e-05
+  },
+  {
+   "loss": 0.05797364562749863,
+   "mse": 0.057973623275756836,
+   "charge": 1.0607898275338812e-06,
+   "final": false,
+   "t": 367.48828203603625,
+   "teacher_steps": 129920,
+   "imagined_steps": 2508800,
+   "wm_loss": 6.897702614878653e-05
+  },
+  {
+   "loss": 0.05797363817691803,
+   "mse": 0.057973623275756836,
+   "charge": 4.603997751928546e-07,
+   "final": false,
+   "t": 488.49613869190216,
+   "teacher_steps": 171520,
+   "imagined_steps": 3340800,
+   "wm_loss": 3.635956254584016e-05
+  },
+  {
+   "loss": 0.05797363072633743,
+   "mse": 0.057973623275756836,
+   "charge": 2.262460583324355e-07,
+   "final": false,
+   "t": 609.6692643640563,
+   "teacher_steps": 213120,
+   "imagined_steps": 4172800,
+   "wm_loss": 3.097468675150594e-05
+  },
+  {
+   "loss": 0.05797363072633743,
+   "mse": 0.057973623275756836,
+   "charge": 1.239345692738425e-07,
+   "final": false,
+   "t": 730.7086599273607,
+   "teacher_steps": 254720,
+   "imagined_steps": 5004800,
+   "wm_loss": 2.6913983492704575e-05
+  },
+  {
+   "loss": 0.057973627001047134,
+   "mse": 0.057973623275756836,
+   "charge": 7.078103436697347e-08,
+   "final": false,
+   "t": 851.7376463469118,
+   "teacher_steps": 296320,
+   "imagined_steps": 5836800,
+   "wm_loss": 2.242204564026906e-05
+  },
+  {
+   "loss": 0.057973627001047134,
+   "mse": 0.057973623275756836,
+   "charge": 4.0792958344582075e-08,
+   "final": false,
+   "t": 972.7490439927205,
+   "teacher_steps": 337920,
+   "imagined_steps": 6668800,
+   "wm_loss": 2.1259259256112273e-05
+  },
+  {
+   "loss": 0.057973627001047134,
+   "mse": 0.057973623275756836,
+   "charge": 2.6101767858222047e-08,
+   "final": false,
+   "t": 1093.8203605590388,
+   "teacher_steps": 379520,
+   "imagined_steps": 7500800,
+   "wm_loss": 2.0660630571001094e-05
+  },
+  {
+   "loss": 0.057973623275756836,
+   "mse": 0.057973623275756836,
+   "charge": 2.0098608999319367e-08,
+   "final": false,
+   "t": 1214.5750177977607,
+   "teacher_steps": 421120,
+   "imagined_steps": 8332800,
+   "wm_loss": 1.873209491805028e-05
+  },
+  {
+   "loss": 0.057973623275756836,
+   "mse": 0.057973623275756836,
+   "charge": 1.5018743582118077e-08,
+   "final": false,
+   "t": 1335.6641614884138,
+   "teacher_steps": 462720,
+   "imagined_steps": 9164800,
+   "wm_loss": 1.7250316886929795e-05
+  },
+  {
+   "loss": 0.057973623275756836,
+   "mse": 0.057973623275756836,
+   "charge": 1.130859939024731e-08,
+   "final": false,
+   "t": 1456.6807640828192,
+   "teacher_steps": 504320,
+   "imagined_steps": 9996800,
+   "wm_loss": 1.5808940179340426e-05
+  },
+  {
+   "loss": 0.057973623275756836,
+   "mse": 0.057973623275756836,
+   "charge": 9.23149556797398e-09,
+   "final": false,
+   "t": 1577.8455936750397,
+   "teacher_steps": 545920,
+   "imagined_steps": 10828800,
+   "wm_loss": 1.4437391109822784e-05
+  },
+  {
+   "loss": 0.057973623275756836,
+   "mse": 0.057973623275756836,
+   "charge": 7.633286891461921e-09,
+   "final": false,
+   "t": 1698.8720002891496,
+   "teacher_steps": 587520,
+   "imagined_steps": 11660800,
+   "wm_loss": 1.5978140936567797e-05
+  },
+  {
+   "loss": 0.060745470225811005,
+   "mse": 0.060745470225811005,
+   "charge": 6.615209269256184e-09,
+   "final": true,
+   "t": 1801.1963275847957,
+   "teacher_steps": 622720,
+   "imagined_steps": 12364800,
+   "wm_loss": 1.293383186293795e-05
+  }
+ ]
+}
