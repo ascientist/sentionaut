@@ -19,7 +19,7 @@
 # (f(amp) with amp a float32 numpy array (B, 60), returning (B, H, W)).
 
 set -euo pipefail
-source "$HOME/sentionaut/scripts/mila_prepare.sh"
+source "${SLURM_SUBMIT_DIR:-$HOME/sentionaut}/scripts/mila_prepare.sh"
 OUT="$ROOT/bench/$SLURM_JOB_ID"
 mkdir -p "$OUT"
 BENCH="uv run python scripts/bench_forward.py --batches 1 8 32 128 512 2048"

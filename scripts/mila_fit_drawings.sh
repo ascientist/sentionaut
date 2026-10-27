@@ -13,7 +13,7 @@
 # The dataset (69 MB, OSF) is downloaded once to scratch with its SHA-256 checked.
 
 set -euo pipefail
-source "$HOME/sentionaut/scripts/mila_prepare.sh"
+source "${SLURM_SUBMIT_DIR:-$HOME/sentionaut}/scripts/mila_prepare.sh"
 mkdir -p "$ROOT/p2p"
 srun uv run sentionaut-fit-drawings --data-dir "$ROOT/p2p" --device cuda \
     --subjects S2 S3 S4 --iters 150 --out "$ROOT/p2p/drawing_fits.json"

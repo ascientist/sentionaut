@@ -13,7 +13,8 @@ to the branch. You submit jobs; you never run compute on a login node.
 - Cluster access: `ssh mila` (Mila's standard alias, set up by `mila init`;
   it reaches `login.server.mila.quebec` on port 2222). If the alias is
   missing, stop and ask Jacob. Do not try to configure SSH keys yourself.
-- On the cluster the checkout lives in `$HOME/sentionaut`. Results, logs and
+- On the cluster the checkout lives on scratch, in `$SCRATCH/sentionaut/repo`;
+  jobs are submitted from there. Results, logs and
   caches go to `/network/scratch/j/jacob.lavoie/sentionaut` (`$SCRATCH/sentionaut`).
 - Mila rules you must respect (https://docs.mila.quebec):
   - **No compute on login nodes.** Only `git`, `sbatch`, `squeue`, `sacct`,
@@ -52,7 +53,7 @@ axon-map caches on scratch, so concurrent tasks do not race on them.
 
 ```bash
 ssh mila
-cd $HOME/sentionaut
+cd $SCRATCH/sentionaut/repo
 git status --short            # must be clean; if not, stop and report what is dirty
 git fetch origin
 git checkout claude/zen-cori-aun5ja
@@ -61,7 +62,7 @@ git log --oneline -3          # report the commit you are running
 mkdir -p /network/scratch/j/jacob.lavoie/sentionaut/logs   # Slurm writes logs here; it must exist
 ```
 
-If `$HOME/sentionaut` does not exist, clone it there first. If uv is not on
+If `$SCRATCH/sentionaut/repo` does not exist, clone it there first. If uv is not on
 `PATH` (`ls ~/.local/bin/uv`), stop and ask; do not install it from a job.
 
 ### 2.2 Smoke test first (one task, 60-second budget)

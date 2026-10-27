@@ -122,7 +122,8 @@ The experiment, the benchmark and the drawing fits run as Slurm jobs on the
 and 48 GB for 5 days, and its jobs are not preempted by other `main` jobs, so a
 timed run is not killed half-way. Every task asks for the same GPU type, so the
 30-minute budgets are comparable across arms. From a login node, in
-`$HOME/sentionaut` on this branch:
+a checkout of this branch (on scratch, e.g. `$SCRATCH/sentionaut/repo`;
+the jobs run from the directory they are submitted from):
 
 ```bash
 sbatch scripts/mila_imagine.sh        # 24 tasks: 2 teachers x 4 arms x 3 seeds, 8 at a time

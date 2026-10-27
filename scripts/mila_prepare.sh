@@ -13,7 +13,9 @@ export UV_CACHE_DIR="$ROOT/uv-cache"
 export SENTIONAUT_AXON_CACHE="$ROOT/axon_cache"
 export MNIST_DIR="$ROOT/mnist"
 mkdir -p "$ROOT/logs" "$UV_CACHE_DIR" "$SENTIONAUT_AXON_CACHE" "$MNIST_DIR"
-cd "$HOME/sentionaut"
+# The checkout the job was submitted from (e.g. $SCRATCH/sentionaut/repo).
+REPO=${SENTIONAUT_REPO:-${SLURM_SUBMIT_DIR:-$HOME/sentionaut}}
+cd "$REPO"
 
 (
     flock -w 3600 9

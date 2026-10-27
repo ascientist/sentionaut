@@ -19,12 +19,12 @@
 # per-job cap (2 GPUs, 8 CPUs, 48 GB) and the L40S node's per-GPU bundle
 # (12 CPUs, 250 GB). `%8` keeps at most 8 tasks running at once.
 #
-# Submit from a login node, from $HOME/sentionaut on this branch:
+# Submit from a login node, from the checkout of this branch (e.g. $SCRATCH/sentionaut/repo):
 #   sbatch scripts/mila_imagine.sh
 # Override the budget with:  BUDGET_S=600 sbatch scripts/mila_imagine.sh
 
 set -euo pipefail
-source "$HOME/sentionaut/scripts/mila_prepare.sh"
+source "${SLURM_SUBMIT_DIR:-$HOME/sentionaut}/scripts/mila_prepare.sh"
 
 PRESETS=(axonmap dynaphos)
 ARMS=(teacher-bptt wm-bptt reinforce-sim reinforce-wm)
