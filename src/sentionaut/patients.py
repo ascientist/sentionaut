@@ -155,9 +155,10 @@ class DrawingFit:
 
 
 def _loss(pred: dict, tgt: dict, names: list[str]):
-    la = torch.tensor([tgt[n]["log_area"] for n in names])
-    el = torch.tensor([tgt[n]["elong"] for n in names])
-    th = torch.tensor([tgt[n]["theta"] for n in names])
+    dev = pred["area"].device
+    la = torch.tensor([tgt[n]["log_area"] for n in names], device=dev)
+    el = torch.tensor([tgt[n]["elong"] for n in names], device=dev)
+    th = torch.tensor([tgt[n]["theta"] for n in names], device=dev)
     area = (torch.log(pred["area"].clamp(min=1e-6)) - la) ** 2
     elong = (pred["elong"] - el) ** 2
     orient = el * (1 - torch.cos(2 * (pred["theta"] - th)))  # weighted: round blobs have no axis
@@ -174,6 +175,7 @@ def fit_drawings(
     axlambda_build: float = 2000.0,
     softness: float = 0.05,
     seed: int = 0,
+    device: str = "cpu",
 ) -> DrawingFit:
     """Fit ``rho``, ``axlambda`` and the drawing threshold to one Argus II subject.
 
@@ -201,7 +203,8 @@ def fit_drawings(
         xystep=step,
         axlambda=axlambda_build,
     )
-    implant, topo, model = build_components(cfg, device=torch.device("cpu"))
+    dev = torch.device(device)
+    implant, topo, model = build_components(cfg, device=dev)
     pose = Pose(
         dx=float(first["implant_x"]),
         dy=float(first["implant_y"]),
@@ -210,7 +213,7 @@ def fit_drawings(
     p2p = ArgusII(
         x=float(first["implant_x"]), y=float(first["implant_y"]), rot=float(first["implant_rot"])
     )
-    ours = implant.electrode_coords(pose)
+    ours = implant.electrode_coords(pose).cpu()
     ref = torch.tensor([[p2p[n].x, p2p[n].y] for n in implant.names], dtype=ours.dtype)
     if not torch.allclose(ours, ref, atol=1.0):
         raise RuntimeError("electrode positions disagree with pulse2percept's ArgusII")
@@ -222,7 +225,7 @@ def fit_drawings(
     xs, ys = topo.grid_x, topo.grid_y
 
     def predict(sel, log_rho, log_lam, thr_logit):
-        amp = torch.zeros(len(sel), implant.n_electrodes)
+        amp = torch.zeros(len(sel), implant.n_electrodes, device=dev)
         for i, n in enumerate(sel):
             amp[i, index[n]] = 2.0
         rho = torch.exp(log_rho)
@@ -235,9 +238,9 @@ def fit_drawings(
 
     def optimise(free_physics: bool):
         torch.manual_seed(seed)
-        log_rho = torch.tensor(math.log(200.0), requires_grad=free_physics)
-        log_lam = torch.tensor(math.log(500.0), requires_grad=free_physics)
-        thr = torch.tensor(0.0, requires_grad=True)
+        log_rho = torch.tensor(math.log(200.0), device=dev, requires_grad=free_physics)
+        log_lam = torch.tensor(math.log(500.0), device=dev, requires_grad=free_physics)
+        thr = torch.tensor(0.0, device=dev, requires_grad=True)
         params = [thr] + ([log_rho, log_lam] if free_physics else [])
         opt = torch.optim.Adam(params, lr=lr)
         for _ in range(iters):
@@ -279,11 +282,12 @@ def cli():  # pragma: no cover
     p.add_argument("--iters", type=int, default=150)
     p.add_argument("--step", type=float, default=1.0)
     p.add_argument("--out", default="data/p2p/drawing_fits.json")
+    p.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     a = p.parse_args()
     df = load_beyeler2019(a.data_dir)
     fits = []
     for s in a.subjects:
-        f = fit_drawings(df, s, step=a.step, iters=a.iters)
+        f = fit_drawings(df, s, step=a.step, iters=a.iters, device=a.device)
         print(json.dumps(asdict(f)))
         fits.append(asdict(f))
     Path(a.out).write_text(json.dumps(fits, indent=1))

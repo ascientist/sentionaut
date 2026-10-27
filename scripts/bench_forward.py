@@ -69,24 +69,30 @@ def p2p_engine(engine: str, threads: int):
     return run, None
 
 
-def torch_engine(kind: str, threads: int):
+def torch_engine(kind: str, threads: int, device: str):
     import torch
 
     from sentionaut.core.config import Config
     from sentionaut.core.registry import build_components
 
     torch.set_num_threads(threads)
+    dev = torch.device(device)
     cfg = Config(model="axonmap", implant="argusii", xrange=XR, yrange=YR, xystep=STEP)
-    implant, topo, model = build_components(cfg, device=torch.device("cpu"))
+    implant, topo, model = build_components(cfg, device=dev)
+
+    def sync():
+        if dev.type == "cuda":
+            torch.cuda.synchronize(dev)
+
     if kind == "wm":
         from sentionaut.learned.imagine import TokenWorldModel
 
         xy = torch.rand(implant.n_electrodes, 2) * 2 - 1
-        wm = TokenWorldModel(tuple(topo.grid_shape), xy, a_max=3.0)
+        wm = TokenWorldModel(tuple(topo.grid_shape), xy, a_max=3.0).to(dev)
 
         def fwd(amp):
-            img = torch.zeros(amp.shape[0], *topo.grid_shape)
-            return wm(img, wm.init_memory(torch.zeros(amp.shape[0], 60, 0)), amp)[0]
+            img = torch.zeros(amp.shape[0], *topo.grid_shape, device=dev)
+            return wm(img, wm.init_memory(torch.zeros(amp.shape[0], 60, 0, device=dev)), amp)[0]
 
     else:
         cut = 5.0 if kind == "torch-sparse" else None
@@ -96,13 +102,25 @@ def torch_engine(kind: str, threads: int):
 
     def run(amp: np.ndarray):
         with torch.no_grad():
-            return fwd(torch.from_numpy(amp))
+            out = fwd(torch.from_numpy(amp).to(dev))
+        sync()
+        return out
 
     def run_grad(amp: np.ndarray):
-        a = torch.from_numpy(amp).requires_grad_(True)
+        a = torch.from_numpy(amp).to(dev).requires_grad_(True)
         fwd(a).sum().backward()
+        sync()
 
     return run, run_grad
+
+
+def _free_cuda():
+    try:
+        import torch
+
+        torch.cuda.empty_cache()
+    except ImportError:
+        pass
 
 
 def main():
@@ -112,6 +130,7 @@ def main():
     )
     p.add_argument("--batches", nargs="+", type=int, default=[1, 8, 32, 128])
     p.add_argument("--threads", type=int, default=1)
+    p.add_argument("--device", default="cpu", help="device for the torch engines and wm")
     p.add_argument("--extra", default=None, help="module:function to time as engine 'extra'")
     p.add_argument("--max-p2p-batch", type=int, default=32)
     a = p.parse_args()
@@ -122,14 +141,23 @@ def main():
             mod, fn = a.extra.split(":")
             run, run_grad = getattr(importlib.import_module(mod), fn), None
         else:
-            run, run_grad = torch_engine(eng, a.threads)
+            run, run_grad = torch_engine(eng, a.threads, a.device)
         for b in a.batches:
             if eng.startswith("p2p-") and b > a.max_p2p_batch:
                 continue  # a per-sample loop: cost is linear in b
             amp = stimuli(b)
             modes = [("forward", run)] + ([("forward+backward", run_grad)] if run_grad else [])
             for mode, fn in modes:
-                sec = timeit(lambda: fn(amp), reps=3)
+                try:
+                    sec = timeit(lambda: fn(amp), reps=3)
+                except (RuntimeError, MemoryError) as err:  # e.g. CUDA out of memory
+                    print(
+                        json.dumps(
+                            {"engine": eng, "batch": b, "mode": mode, "error": str(err)[:200]}
+                        )
+                    )
+                    _free_cuda()
+                    continue
                 print(
                     json.dumps(
                         {
@@ -137,6 +165,7 @@ def main():
                             "batch": b,
                             "mode": mode,
                             "threads": a.threads,
+                            "device": "cpu" if eng.startswith("p2p-cython") else a.device,
                             "sec_per_call": sec,
                             "samples_per_s": b / sec,
                         }

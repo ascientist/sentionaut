@@ -143,6 +143,7 @@ class Teacher:
         """Phosphene centre of each electrode in grid pixels ``(row, col)``; silent ones at 0."""
 
         def render(amp):
+            amp = amp.to(self.device)
             state = self.reset(amp.shape[0])
             for _ in range(3):
                 state, img = self.step(state, amp)
@@ -317,16 +318,34 @@ class Replay:
 
 
 # ----------------------------------------------------------------- rollouts
-def teacher_rollout(teacher: Teacher, enc: Encoder, target, noise: float = 0.0, g=None):
-    """Run the encoder in the teacher; differentiable unless called under ``no_grad``."""
-    n = target.shape[0]
+def random_stimulation(n: int, n_elec: int, spec: TaskSpec, g, p_on: float = 0.3) -> torch.Tensor:
+    """Random electrode subsets at amplitudes above the gate (exploration)."""
+    on = torch.rand(n, n_elec, generator=g) < p_on
+    amp = spec.a_min + (spec.a_max - spec.a_min) * torch.rand(n, n_elec, generator=g)
+    return amp * on
+
+
+def teacher_rollout(
+    teacher: Teacher, enc: Encoder, target, noise: float = 0.0, g=None, explore: float = 0.0
+):
+    """Run the encoder in the teacher; differentiable unless called under ``no_grad``.
+
+    ``noise`` adds Gaussian action noise (fraction of ``a_max``). ``explore``
+    replaces the encoder's action by random stimulation in that fraction of
+    the episodes, so the data cover electrodes switching on and off.
+    """
+    n, dev = target.shape[0], teacher.device
     state = teacher.reset(n)
-    img = torch.zeros(n, *teacher.grid)
+    img = torch.zeros(n, *teacher.grid, device=dev)
     imgs, phys, acts = [img], [teacher.phys(state, n)], []
+    n_rand = int(round(explore * n))
     for _ in range(teacher.spec.horizon):
         a = enc(target, img)
         if noise:
-            a = a + noise * teacher.spec.a_max * torch.randn(a.shape, generator=g)
+            a = a + noise * teacher.spec.a_max * torch.randn(a.shape, generator=g).to(dev)
+        if n_rand:
+            r = random_stimulation(n_rand, teacher.n_elec, teacher.spec, g).to(dev)
+            a = torch.cat([r, a[n_rand:]])
         state, img = teacher.step(state, a)
         imgs.append(img)
         phys.append(teacher.phys(state, n))
@@ -336,7 +355,7 @@ def teacher_rollout(teacher: Teacher, enc: Encoder, target, noise: float = 0.0, 
 
 def model_rollout(wm: TokenWorldModel, teacher: Teacher, enc: Encoder, target):
     n = target.shape[0]
-    img = torch.zeros(n, *teacher.grid)
+    img = torch.zeros(n, *teacher.grid, device=target.device)
     mem = wm.init_memory(teacher.phys(teacher.reset(n), n))
     imgs, acts = [img], []
     for _ in range(teacher.spec.horizon):
@@ -373,11 +392,11 @@ def reinforce_loss(spec: TaskSpec, enc: Encoder, step_fn, target, sigma: float, 
     ``a_max * sigmoid(logits + noise)``.
     """
     n = target.shape[0]
-    state, img = None, torch.zeros(n, *target.shape[1:])
+    state, img = None, torch.zeros(n, *target.shape[1:], device=target.device)
     logps, rewards = [], []
     for t in range(spec.horizon):
         mu = enc.logits(target, img)
-        z = mu.detach() + sigma * torch.randn(mu.shape, generator=g)
+        z = mu.detach() + sigma * torch.randn(mu.shape, generator=g).to(mu.device)
         logps.append((-((z - mu) ** 2) / (2 * sigma**2)).sum(-1))
         a = spec.a_max * torch.sigmoid(z)
         with torch.no_grad():
@@ -406,6 +425,7 @@ class RunConfig:
     # world-model loop
     collect: int = 64  # teacher episodes per cycle
     action_noise: float = 0.05  # std, fraction of a_max
+    explore: float = 0.5  # fraction of collected episodes with random stimulation
     wm_steps: int = 40
     policy_steps: int = 20
     wm_window: int = 8
@@ -414,6 +434,8 @@ class RunConfig:
     # model-free
     sigma: float = 0.5
     threads: int = 1
+    device: str = "auto"  # auto | cpu | cuda
+    mnist: str = "data/mnist"
     out: str = "data/imagine"
     tags: dict = field(default_factory=dict)
 
@@ -436,7 +458,7 @@ def evaluate_baselines(teacher: Teacher, targets: torch.Tensor) -> dict:
     """
     spec = teacher.spec
     n = targets.shape[0]
-    zero = torch.zeros(n, spec.horizon, teacher.n_elec)
+    zero = torch.zeros(n, spec.horizon, teacher.n_elec, device=teacher.device)
 
     def score(acts):
         state, imgs = teacher.reset(n), []
@@ -471,12 +493,21 @@ def evaluate_baselines(teacher: Teacher, targets: torch.Tensor) -> dict:
     return out
 
 
+def _device(name: str) -> torch.device:
+    if name == "auto":
+        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    return torch.device(name)
+
+
 def run(rc: RunConfig, teacher: Teacher | None = None, targets: dict | None = None) -> dict:
     torch.set_num_threads(rc.threads)
+    dev = teacher.device if teacher is not None else _device(rc.device)
     if rc.arm == "baselines":
         spec = TaskSpec.preset(rc.preset)
-        teacher = teacher or Teacher(spec)
-        targets = targets or load_targets(teacher.grid)
+        teacher = teacher or Teacher(spec, dev)
+        targets = {
+            k: v.to(dev) for k, v in (targets or load_targets(teacher.grid, rc.mnist)).items()
+        }
         result = {"spec": asdict(spec), "baselines": evaluate_baselines(teacher, targets["test"])}
         out = Path(rc.out)
         out.mkdir(parents=True, exist_ok=True)
@@ -485,14 +516,15 @@ def run(rc: RunConfig, teacher: Teacher | None = None, targets: dict | None = No
     torch.manual_seed(rc.seed)
     g = torch.Generator().manual_seed(rc.seed)
     spec = TaskSpec.preset(rc.preset)
-    teacher = teacher or Teacher(spec)
-    targets = targets or load_targets(teacher.grid)
-    train, test = targets["train"], targets["test"]
-    enc = Encoder(teacher.grid, teacher.n_elec, spec.a_max)
+    teacher = teacher or Teacher(spec, dev)
+    targets = targets or load_targets(teacher.grid, rc.mnist)
+    train, test = targets["train"].to(dev), targets["test"].to(dev)
+    enc = Encoder(teacher.grid, teacher.n_elec, spec.a_max).to(dev)
     opt = torch.optim.Adam(enc.parameters(), lr=rc.lr)
     use_wm = rc.arm in ("wm-bptt", "reinforce-wm")
     if use_wm:
         wm = TokenWorldModel(teacher.grid, teacher.electrode_xy(), spec.a_max, teacher.n_phys)
+        wm = wm.to(dev)
         wm_opt = torch.optim.Adam(wm.parameters(), lr=1e-3)
         buf = Replay(rc.capacity)
 
@@ -512,8 +544,14 @@ def run(rc: RunConfig, teacher: Teacher | None = None, targets: dict | None = No
         log.append(r)
 
     record()
+
+    def now():
+        if dev.type == "cuda":
+            torch.cuda.synchronize(dev)
+        return time.perf_counter()
+
     while clock < rc.budget_s:
-        t0 = time.perf_counter()
+        t0 = now()
         if rc.arm == "teacher-bptt":
             y = batch_targets(rc.batch)
             imgs, _, acts = teacher_rollout(teacher, enc, y)
@@ -534,7 +572,9 @@ def run(rc: RunConfig, teacher: Teacher | None = None, targets: dict | None = No
             with torch.no_grad():
                 for s in range(0, n_new, rc.batch):
                     y = batch_targets(min(rc.batch, n_new - s))
-                    imgs, phys, acts = teacher_rollout(teacher, enc, y, rc.action_noise, g)
+                    imgs, phys, acts = teacher_rollout(
+                        teacher, enc, y, rc.action_noise, g, explore=rc.explore
+                    )
                     buf.add(imgs, phys, acts.clamp(0, spec.a_max))
             teacher_steps += n_new * spec.horizon
             wm.train()
@@ -550,7 +590,7 @@ def run(rc: RunConfig, teacher: Teacher | None = None, targets: dict | None = No
                     def wm_step(state, a):
                         if state is None:
                             state = (
-                                torch.zeros(a.shape[0], *teacher.grid),
+                                torch.zeros(a.shape[0], *teacher.grid, device=dev),
                                 wm.init_memory(teacher.phys(teacher.reset(a.shape[0]), a.shape[0])),
                             )
                         img, mem = wm(state[0], state[1], a)
@@ -562,12 +602,18 @@ def run(rc: RunConfig, teacher: Teacher | None = None, targets: dict | None = No
                 opt.step()
                 imagined_steps += rc.batch * spec.horizon
             wm.requires_grad_(True)
-        clock += time.perf_counter() - t0
+        clock += now() - t0
         if clock >= next_eval:
             record()
             next_eval = clock + rc.eval_every_s
     record(final=True)
-    result = {"config": asdict(rc), "spec": asdict(spec), "scale": teacher.scale, "log": log}
+    result = {
+        "config": asdict(rc),
+        "spec": asdict(spec),
+        "scale": teacher.scale,
+        "device": torch.cuda.get_device_name(dev) if dev.type == "cuda" else "cpu",
+        "log": log,
+    }
     out = Path(rc.out)
     out.mkdir(parents=True, exist_ok=True)
     name = f"{rc.preset}_{rc.arm}_s{rc.seed}.json"

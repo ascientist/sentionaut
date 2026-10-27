@@ -22,9 +22,8 @@ def probe_centroids(
     """
     img = render(torch.eye(n_electrodes) * amp)
     h, w = img.shape[-2:]
-    rr, cc = torch.meshgrid(
-        torch.arange(h, dtype=img.dtype), torch.arange(w, dtype=img.dtype), indexing="ij"
-    )
+    kw = {"dtype": img.dtype, "device": img.device}
+    rr, cc = torch.meshgrid(torch.arange(h, **kw), torch.arange(w, **kw), indexing="ij")
     total = img.sum((1, 2), keepdim=True)
     wts = img / total.clamp(min=1e-12)
     cent = torch.stack([(wts * rr).sum((1, 2)), (wts * cc).sum((1, 2))], -1)
